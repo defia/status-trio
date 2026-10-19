@@ -47,12 +47,18 @@ final class SystemPrivilegedHelperService: PrivilegedHelperServicing {
     }
 
     /// The daemon must be present in the bundle for registration to mean
-    /// anything; an Ad-hoc build cannot satisfy the daemon's signing
-    /// requirement, so the feature is offered only when the build declared it.
+    /// anything, and this process must carry the identity that daemon accepts:
+    /// an Ad-hoc build has no team, and a worktree build with a rewritten
+    /// `BUNDLE_ID` fails the requirement's `identifier` clause. Both would
+    /// register a helper whose every connection is rejected, so neither may
+    /// offer the toggle.
     var isSupported: Bool {
         guard Bundle.main.bundleURL.pathExtension == "app" else { return false }
         guard AppMetadata.includesPrivilegedHelper else { return false }
-        return FileManager.default.isExecutableFile(atPath: Self.daemonURL.path)
+        guard FileManager.default.isExecutableFile(atPath: Self.daemonURL.path) else { return false }
+        guard let identity = AppSigningIdentity.current() else { return false }
+        return identity.bundleIdentifier == PowerHelperConstants.clientBundleIdentifier
+            && identity.teamIdentifier == PowerHelperConstants.clientTeamIdentifier
     }
 
     private static var daemonURL: URL {
