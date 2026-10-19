@@ -811,6 +811,16 @@ final class CoreAudioVolumeEventMonitor: VolumeEventMonitoring {
     }
 }
 
+/// Carries a main-actor value into the queue hop used by `deinit`, where no
+/// isolation is available to prove the hand-off.
+private final class MainActorBox<Value>: @unchecked Sendable {
+    let value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+}
+
 @MainActor
 final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private enum Lifecycle {
@@ -823,7 +833,9 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private let continuation: AsyncStream<VolumeStatus>.Continuation
     private let statusReader: any AudioStatusReadingProviding
     private let appleBluetoothAudioDiagnosticReporter: AppleBluetoothAudioDiagnosticReporter
-    private let eventMonitor: any VolumeEventMonitoring
+    /// `nonisolated(unsafe)` so the nonisolated `deinit` can hand its teardown
+    /// to the main queue; every other access is on the main actor.
+    nonisolated(unsafe) private let eventMonitor: any VolumeEventMonitoring
     private let outputController: (any AudioOutputControlling)?
     private let ddcTransport: any DDCVolumeTransport
     private let suppliedDDCCoordinator: DDCVolumeCoordinator?
@@ -844,7 +856,10 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var readToken: UInt64 = 0
     private let readWatchdog: ReadWatchdog
     private var lifecycle = Lifecycle.idle
-    private var screenObserver: NSObjectProtocol?
+    /// `nonisolated(unsafe)` so the nonisolated `deinit` can drop it: the token
+    /// is only written on the main actor, and removal from NotificationCenter is
+    /// thread-safe.
+    nonisolated(unsafe) private var screenObserver: NSObjectProtocol?
     private var selectedDDCOutputID: AudioDeviceID?
     private var selectedDDCUID: String?
     private var ddcStatusGeneration: UInt64?
@@ -887,14 +902,34 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     }
 
     deinit {
-        MainActor.assumeIsolated {
-            scheduledRefreshTask?.cancel()
-            if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
-            if lifecycle != .stopped {
-                eventMonitor.stop()
-            }
+        // `deinit` is nonisolated, and the last reference can be released from
+        // any thread, so asserting the main actor here trapped instead of
+        // cleaning up. Cancel the scheduled work and drop the observer, which
+        // are safe from any thread; the main-actor teardown belongs to `stop()`,
+        // and the event monitor unregisters its own CoreAudio listeners from its
+        // `deinit` when `stop()` never ran.
+        scheduledRefreshTask?.cancel()
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        if lifecycle != .stopped {
+            // The monitor's `stop()` is main-actor code. Run it inline here when
+            // the last reference is released on the main thread, which is the
+            // normal case, and otherwise hand it to the main queue: asserting
+            // the actor instead trapped in any background release.
+            Self.stopEventMonitor(eventMonitor)
         }
         continuation.finish()
+    }
+
+    /// Runs the event monitor's main-actor teardown from a nonisolated context.
+    private nonisolated static func stopEventMonitor(_ monitor: any VolumeEventMonitoring) {
+        let monitor = MainActorBox(monitor)
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { monitor.value.stop() }
+        } else {
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { monitor.value.stop() }
+            }
+        }
     }
 
     func start() {
