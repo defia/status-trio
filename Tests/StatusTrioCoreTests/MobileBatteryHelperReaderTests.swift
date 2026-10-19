@@ -328,6 +328,25 @@ struct MobileBatteryHelperReaderTests {
         }
     }
 
+    @Test func processExecutorFinishesWhenADescendantHoldsThePipes() async throws {
+        // The helper exits immediately but leaves a child holding the inherited
+        // stdout/stderr, so the stream-ended flags never arrive. The invocation
+        // must still finish at its deadline instead of waiting for that child.
+        let script = try makeScript("sleep 5 & exit 0")
+        defer { try? FileManager.default.removeItem(at: script) }
+        let clock = ContinuousClock()
+        let started = clock.now
+
+        do {
+            _ = try await ProcessMobileBatteryHelperExecutor(helperURL: script)
+                .run(arguments: [], timeout: .milliseconds(500))
+            Issue.record("an invocation whose pipes are held must time out")
+        } catch {
+            #expect(error as? MobileBatteryHelperError == .timedOut)
+            #expect(clock.now - started < .seconds(3))
+        }
+    }
+
     private func makeIgnoringTerminationScript(pidFile: URL) throws -> URL {
         let script = try makeScript(
             "import os, signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nwith open(\(String(reflecting: pidFile.path)), 'w') as f: f.write(str(os.getpid()))\nprint('ready', flush=True)\nwhile True: time.sleep(0.01)",
