@@ -53,6 +53,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     let chargingEffectClock: ChargingEffectClock
     private var iconPresentationCancellable: AnyCancellable?
     private var accessibilityCancellable: AnyCancellable?
+    /// The single accessibility update waiting on the main actor, so a burst of
+    /// emissions cannot queue one stale update per value.
+    private var accessibilityUpdateTask: Task<Void, Never>?
     private var chargingEffectCancellable: AnyCancellable?
     private var currentChargingEffectPhase: ChargingEffectPhase?
     private var screenParametersCancellable: AnyCancellable?
@@ -210,10 +213,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             store.$snapshot,
             localization.$resolvedLanguage
         )
-        .sink { [weak self] snapshot, language in
-            Task { @MainActor [weak self] in
-                self?.updateAccessibility(snapshot: snapshot, language: language)
-            }
+        .sink { [weak self] _, _ in
+            self?.scheduleAccessibilityUpdate()
         }
 
         refreshIntervalCancellable = settings.$refreshIntervalSeconds
@@ -868,6 +869,25 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// waiting out the coalescing interval.
     private func renderLatestScene() {
         presentMenuBar(phase: currentChargingEffectPhase)
+    }
+
+    /// Applies the newest status to the button's accessibility element.
+    ///
+    /// Both upstreams can emit several values in one turn. One in-flight task
+    /// that reads the state when it runs keeps the element in step with the
+    /// newest truth; queueing a task per emission instead would let each one
+    /// apply the snapshot it captured, and the last to run would be the
+    /// authority regardless of which value was newest.
+    private func scheduleAccessibilityUpdate() {
+        guard accessibilityUpdateTask == nil else { return }
+        accessibilityUpdateTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            accessibilityUpdateTask = nil
+            updateAccessibility(
+                snapshot: store.snapshot,
+                language: localization.resolvedLanguage
+            )
+        }
     }
 
     private func updateAccessibility(snapshot: StatusSnapshot, language: AppLanguage) {
