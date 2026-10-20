@@ -23,7 +23,7 @@ struct BoundedProcessInvocationTests {
             timeout: .seconds(5)
         )
         #expect(outcome == .failed)
-        #expect(ContinuousClock.now - started < .seconds(3))
+        #expect(ContinuousClock.now - started < .seconds(10))
     }
 
     @Test func runSyncGivesUpAtTheDeadlineInsteadOfBlockingForever() {
@@ -34,8 +34,9 @@ struct BoundedProcessInvocationTests {
             timeout: .milliseconds(300)
         )
         #expect(outcome == .timedOut)
-        // 300ms deadline + 250ms kill grace + 500ms stream grace, plus slack.
-        #expect(ContinuousClock.now - started < .seconds(3))
+        // 300ms deadline + 250ms kill grace + 500ms stream grace, plus slack for
+        // a loaded machine. The point is "not the 30-second sleep", not a budget.
+        #expect(ContinuousClock.now - started < .seconds(10))
     }
 
     /// The M-3 shape: the child exits, but a descendant inherits its stdout and
@@ -49,7 +50,7 @@ struct BoundedProcessInvocationTests {
             timeout: .milliseconds(300)
         )
         #expect(outcome == .timedOut)
-        #expect(ContinuousClock.now - started < .seconds(3))
+        #expect(ContinuousClock.now - started < .seconds(10))
     }
 
     @Test func runSyncRejectsAChildThatWritesMoreThanTheLimit() {

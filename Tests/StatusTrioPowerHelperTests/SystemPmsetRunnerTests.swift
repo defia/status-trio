@@ -20,14 +20,20 @@ final class SystemPmsetRunnerTests: XCTestCase {
             guard case .timedOut = error as? PmsetError else {
                 return XCTFail("expected a timeout, got \(error)")
             }
-            XCTAssertLessThan(clock.now - started, .seconds(3))
+            // The 300ms deadline is what matters; this ceiling only has to
+            // separate it from the 30-second sleep the child asked for, so it
+            // stays loose enough for a loaded test machine.
+            XCTAssertLessThan(clock.now - started, .seconds(10))
         }
     }
 
     func testCurrentLowPowerModeReadsStdoutAfterTheChildExits() async throws {
         let script = try makeScript("printf ' lowpowermode         1\\n'")
         defer { try? FileManager.default.removeItem(at: script) }
-        let runner = SystemPmsetRunner(timeout: .seconds(2), executableURL: script)
+        // The deadline is not what this test asserts, and a shell start under a
+        // fully parallel test run has been seen to exceed two seconds, so the
+        // budget is deliberately generous.
+        let runner = SystemPmsetRunner(timeout: .seconds(15), executableURL: script)
 
         let enabled = await runner.currentLowPowerMode()
 
@@ -37,7 +43,7 @@ final class SystemPmsetRunnerTests: XCTestCase {
     func testNonZeroExitIsReportedAsAFailure() async throws {
         let script = try makeScript("echo nope >&2\nexit 17")
         defer { try? FileManager.default.removeItem(at: script) }
-        let runner = SystemPmsetRunner(timeout: .seconds(2), executableURL: script)
+        let runner = SystemPmsetRunner(timeout: .seconds(15), executableURL: script)
 
         do {
             try await runner.setLowPowerMode(enabled: false)
