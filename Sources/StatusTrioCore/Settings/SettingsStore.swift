@@ -148,15 +148,31 @@ final class SettingsStore: ObservableObject {
     }
 
     func completeTelemetryConsent(sharesAnalytics: Bool) {
-        guard telemetryConsentVersion <= TelemetryConsent.currentVersion else { return }
+        guard let recordedVersion = consentVersionToRecord(grants: sharesAnalytics) else { return }
 
         // Persist both values before emitting one coherent snapshot. @Published
         // emits before didSet, so observers must use this explicit publisher.
         defaults.set(sharesAnalytics, forKey: Self.sharesAnonymousAnalyticsDefaultsKey)
-        defaults.set(TelemetryConsent.currentVersion, forKey: Self.telemetryConsentVersionDefaultsKey)
+        defaults.set(recordedVersion, forKey: Self.telemetryConsentVersionDefaultsKey)
         sharesAnonymousAnalytics = sharesAnalytics
-        telemetryConsentVersion = TelemetryConsent.currentVersion
+        telemetryConsentVersion = recordedVersion
         telemetryConsentSubject.send(telemetryConsentSnapshot)
+    }
+
+    /// The version to store alongside a new analytics answer, or `nil` when the
+    /// answer must be dropped.
+    ///
+    /// A stored version newer than this build means the user answered a newer
+    /// prompt and then went back to an older build. Granting is refused then —
+    /// this build cannot speak for a prompt it never showed — but withdrawing
+    /// is not: consent has to stay revocable, otherwise the analytics toggle
+    /// silently refuses to move. A withdrawal keeps the stored version, so the
+    /// newer build still sees the answer it recorded together with `false`.
+    private func consentVersionToRecord(grants: Bool) -> Int? {
+        if telemetryConsentVersion > TelemetryConsent.currentVersion {
+            return grants ? nil : telemetryConsentVersion
+        }
+        return TelemetryConsent.currentVersion
     }
 
     func setSharesAnonymousAnalytics(_ enabled: Bool) {
