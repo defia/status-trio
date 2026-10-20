@@ -54,7 +54,7 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private var hasStarted = false
     private var cancelled = false
     private var failure: BoundedProcessOutcome?
-    private var onFinish: ((BoundedProcessOutcome) -> Void)?
+    private var onFinish: (@Sendable (BoundedProcessOutcome) -> Void)?
 
     init(executableURL: URL, arguments: [String], outputLimit: Int = BoundedProcessInvocation.defaultOutputLimit) {
         self.executableURL = executableURL
@@ -99,26 +99,41 @@ final class BoundedProcessInvocation: @unchecked Sendable {
             arguments: arguments,
             outputLimit: outputLimit
         )
-        let semaphore = DispatchSemaphore(value: 0)
-        let lock = NSLock()
-        var result: BoundedProcessOutcome?
-
-        invocation.start(timeout: timeout) { outcome in
-            lock.withLock { result = outcome }
-            semaphore.signal()
-        }
+        let box = SyncOutcomeBox()
+        invocation.start(timeout: timeout) { box.store($0) }
 
         // The state machine always finishes within the deadline plus its own
         // grace periods, so waiting a little past the deadline is enough; the
         // extra second only covers scheduling slack, and the wait is still
         // bounded.
-        semaphore.wait(timeout: .now() + seconds(timeout) + 1.5)
-        return lock.withLock { result } ?? .timedOut
+        return box.wait(.now() + Self.seconds(timeout) + 1.5) ?? .timedOut
+    }
+
+    /// Carries one outcome back to a caller that cannot await. The callback
+    /// crosses the invocation's queue, so it owns its own lock instead of
+    /// capturing the caller's mutable state.
+    private final class SyncOutcomeBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private let finished = DispatchSemaphore(value: 0)
+        private var outcome: BoundedProcessOutcome?
+
+        func store(_ outcome: BoundedProcessOutcome) {
+            lock.withLock { self.outcome = outcome }
+            finished.signal()
+        }
+
+        func wait(_ deadline: DispatchTime) -> BoundedProcessOutcome? {
+            _ = finished.wait(timeout: deadline)
+            return lock.withLock { outcome }
+        }
     }
 
     // MARK: - State machine
 
-    private func start(timeout: Duration, onFinish: @escaping (BoundedProcessOutcome) -> Void) {
+    private func start(
+        timeout: Duration,
+        onFinish: @escaping @Sendable (BoundedProcessOutcome) -> Void
+    ) {
         queue.async {
             self.onFinish = onFinish
             guard !self.cancelled else {
