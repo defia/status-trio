@@ -96,23 +96,24 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
         }
     }
 
+    /// Comfortably under the controller's five-second read watchdog, so a
+    /// stalled profiler ends the read itself instead of being abandoned.
+    static let readTimeout: Duration = .seconds(4)
+
+    /// The one bounded `system_profiler` read in the app.
+    ///
+    /// `readDataToEndOfFile()` plus `waitUntilExit()` has no deadline: a
+    /// profiler wedged in IOBluetooth, or a descendant holding the inherited
+    /// pipe, would block this worker's serial queue for the rest of the process
+    /// and leave the watchdog to abandon another thread per retry.
     static func readSystemProfilerOutput() -> Data? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
-        process.arguments = ["-json", "SPBluetoothDataType"]
-
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            return process.terminationStatus == 0 ? data : nil
-        } catch {
-            return nil
-        }
+        let outcome = BoundedProcessInvocation.runSync(
+            executableURL: URL(fileURLWithPath: "/usr/sbin/system_profiler"),
+            arguments: ["-json", "SPBluetoothDataType"],
+            timeout: readTimeout
+        )
+        guard case .exited(let data) = outcome else { return nil }
+        return data
     }
 }
 

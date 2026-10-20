@@ -221,22 +221,9 @@ final class SystemProfilerBluetoothBatteryWorker: @unchecked Sendable, Bluetooth
         }
     }
 
+    /// The battery and device readers want the same report; share the bounded
+    /// read so there is one deadline and one place that reaps the child.
     static func readSystemProfilerOutput() -> Data? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
-        process.arguments = ["-json", "SPBluetoothDataType"]
-
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            return process.terminationStatus == 0 ? data : nil
-        } catch {
-            return nil
-        }
+        SystemProfilerBluetoothPairedDeviceWorker.readSystemProfilerOutput()
     }
 }
