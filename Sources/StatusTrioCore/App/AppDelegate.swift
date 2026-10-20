@@ -1,4 +1,10 @@
 import AppKit
+import os
+
+private let singleInstanceLogger = Logger(
+    subsystem: "com.lingsmbp.StatusTrio",
+    category: "SingleInstance"
+)
 
 @MainActor
 public final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -11,16 +17,35 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        guard let singleInstanceGuard = SingleInstanceGuard() else {
+        switch SingleInstanceGuard.acquire() {
+        case .acquired(let guardInstance):
+            self.singleInstanceGuard = guardInstance
+        case .rejected(let rejection):
+            reportSingleInstanceRejection(rejection)
             NSApplication.shared.terminate(nil)
             return
         }
-        self.singleInstanceGuard = singleInstanceGuard
 
         let environment = AppEnvironment.live()
         self.environment = environment
         environment.start()
         updaterManager.start(activationPolicy: environment.activationPolicy)
+    }
+
+    /// Keeps "another copy is running" and "the lock is unusable" apart in the
+    /// log. Both end the launch: running a second instance is never the
+    /// fallback.
+    private func reportSingleInstanceRejection(_ rejection: SingleInstanceGuard.Rejection) {
+        switch rejection {
+        case .alreadyRunning:
+            singleInstanceLogger.notice(
+                "another StatusTrio instance holds the lock; terminating"
+            )
+        case .lockUnavailable(let reason):
+            singleInstanceLogger.error(
+                "single-instance lock is unusable, terminating: \(reason, privacy: .public)"
+            )
+        }
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
