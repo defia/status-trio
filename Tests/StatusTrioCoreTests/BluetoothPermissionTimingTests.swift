@@ -77,109 +77,11 @@ final class BluetoothPermissionTimingTests: XCTestCase {
             bluetoothDevices: bluetoothController
         )
 
-        store.setBluetoothDeviceMonitoringEnabled(true)
+        store.setBluetoothEnabled(true)
         XCTAssertEqual(stateMonitor.startCount, 1)
 
-        store.setBluetoothDeviceMonitoringEnabled(false)
+        store.setBluetoothEnabled(false)
         XCTAssertEqual(stateMonitor.stopCount, 1)
-    }
-
-    func testRadioPowerOffStopsMonitoringAndPowerOnRestoresIt() async {
-        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
-        let radioBackend = PermissionTimingBluetoothRadioBackend(power: .on)
-        let bluetoothController = BluetoothDeviceController(
-            stateMonitor: stateMonitor,
-            notificationCenter: NotificationCenter(),
-            workspaceNotificationCenter: NotificationCenter()
-        )
-        let store = SystemStatusStore(
-            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
-            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
-            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
-            bluetoothDevices: bluetoothController,
-            bluetoothPower: BluetoothRadioPowerController(backend: radioBackend)
-        )
-        store.setBluetoothDeviceMonitoringEnabled(true)
-
-        await store.setBluetoothPower(false)
-        XCTAssertEqual(stateMonitor.stopCount, 1)
-        XCTAssertFalse(bluetoothController.isActive)
-
-        await store.setBluetoothPower(true)
-        XCTAssertEqual(stateMonitor.startCount, 2)
-        XCTAssertTrue(bluetoothController.isActive)
-    }
-
-    func testFailedRadioPowerWritePreservesBluetoothMonitoring() async {
-        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
-        let radioBackend = PermissionTimingBluetoothRadioBackend(
-            power: .on,
-            acceptsWrites: false
-        )
-        let bluetoothController = BluetoothDeviceController(
-            stateMonitor: stateMonitor,
-            notificationCenter: NotificationCenter(),
-            workspaceNotificationCenter: NotificationCenter()
-        )
-        let store = SystemStatusStore(
-            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
-            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
-            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
-            bluetoothDevices: bluetoothController,
-            bluetoothPower: BluetoothRadioPowerController(
-                backend: radioBackend,
-                readBackAttempts: 1
-            )
-        )
-        store.setBluetoothDeviceMonitoringEnabled(true)
-
-        await store.setBluetoothPower(false)
-
-        XCTAssertEqual(store.bluetoothPower.failure, .requestRejected)
-        XCTAssertEqual(stateMonitor.stopCount, 0)
-        XCTAssertTrue(bluetoothController.isActive)
-    }
-
-    func testStartingAndStoppingStoreDoesNotReadRadioPower() {
-        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
-        let radioBackend = PermissionTimingBluetoothRadioBackend(power: .on)
-        let store = SystemStatusStore(
-            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
-            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
-            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
-            bluetoothDevices: BluetoothDeviceController(
-                stateMonitor: stateMonitor,
-                notificationCenter: NotificationCenter(),
-                workspaceNotificationCenter: NotificationCenter()
-            ),
-            bluetoothPower: BluetoothRadioPowerController(backend: radioBackend)
-        )
-
-        store.start()
-        store.stop()
-
-        XCTAssertEqual(radioBackend.readCount, 0)
-    }
-
-    func testRadioPowerWriteIsIgnoredWithoutBluetoothPermission() async {
-        let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
-        let radioBackend = PermissionTimingBluetoothRadioBackend(power: .on)
-        let store = SystemStatusStore(
-            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
-            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
-            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
-            bluetoothDevices: BluetoothDeviceController(
-                stateMonitor: stateMonitor,
-                notificationCenter: NotificationCenter(),
-                workspaceNotificationCenter: NotificationCenter()
-            ),
-            bluetoothPower: BluetoothRadioPowerController(backend: radioBackend)
-        )
-
-        await store.setBluetoothPower(false)
-
-        XCTAssertEqual(radioBackend.setRequests, [])
-        XCTAssertEqual(radioBackend.readCount, 0)
     }
 
     func testExplicitlyEnabledBluetoothMonitorSurvivesPopupClose() {
@@ -196,7 +98,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
             bluetoothDevices: bluetoothController
         )
 
-        store.setBluetoothDeviceMonitoringEnabled(true)
+        store.setBluetoothEnabled(true)
         XCTAssertEqual(stateMonitor.startCount, 1)
 
         store.setPopoverVisible(true)
@@ -206,7 +108,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         XCTAssertEqual(stateMonitor.stopCount, 0)
         XCTAssertFalse(store.hasOpenPopoverPanel)
 
-        store.setBluetoothDeviceMonitoringEnabled(false)
+        store.setBluetoothEnabled(false)
         XCTAssertEqual(stateMonitor.stopCount, 1)
     }
 
@@ -215,6 +117,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
     /// popover releases that temporary activation.
     func testPopoverOnlyBluetoothActivationStopsWhenPopoverCloses() {
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        stateMonitor.stateOnStart = .poweredOn
         let bluetoothController = BluetoothDeviceController(
             stateMonitor: stateMonitor,
             notificationCenter: NotificationCenter(),
@@ -267,6 +170,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
     /// callback on opening, so the popover must request one refresh itself.
     func testPopoverOpeningRefreshesAlreadyActiveBluetoothMonitorOnce() async {
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        stateMonitor.stateOnStart = .poweredOn
         let reader = ImmediateCountingBluetoothReader()
         let bluetoothController = BluetoothDeviceController(
             worker: reader,
@@ -281,7 +185,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
             bluetoothDevices: bluetoothController
         )
 
-        store.setBluetoothDeviceMonitoringEnabled(true)
+        store.setBluetoothEnabled(true)
         stateMonitor.emit(authorization: .allowed, managerState: .poweredOn)
         await waitUntil { bluetoothController.devices.map(\.id) == ["opening-read"] }
         reader.resetCompletedReadCount()
@@ -291,15 +195,19 @@ final class BluetoothPermissionTimingTests: XCTestCase {
 
         XCTAssertEqual(reader.completedReadCount, 1)
         store.setPopoverVisible(false)
-        store.setBluetoothDeviceMonitoringEnabled(false)
+        store.setBluetoothEnabled(false)
         store.stop()
     }
 
-    /// Settings' Bluetooth section can activate the shared controller without
-    /// toggling the store's persistent Bluetooth setting. The popover still
-    /// needs one fresh read and must leave that existing activation alive.
-    func testPopoverRefreshesControllerActivatedBySettingsSection() async {
+    /// Settings' Bluetooth section owns the shared controller only while its
+    /// page is visible. The popover still needs one fresh read and must leave
+    /// that existing activation alive.
+    func testPopoverRefreshesControllerWithVisibleSettingsDemand() async {
+        let suiteName = "BluetoothPermissionTiming.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        stateMonitor.stateOnStart = .poweredOn
         let reader = ImmediateCountingBluetoothReader()
         let bluetoothController = BluetoothDeviceController(
             worker: reader,
@@ -313,9 +221,12 @@ final class BluetoothPermissionTimingTests: XCTestCase {
             volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
             bluetoothDevices: bluetoothController
         )
+        let settings = SettingsStore(defaults: defaults)
+        settings.setPopupSection(.bluetooth, enabled: true)
+        store.bindBluetoothSettings(settings)
 
-        bluetoothController.activate()
-        stateMonitor.emit(authorization: .allowed, managerState: .poweredOn)
+        store.start()
+        store.setBluetoothSettingsVisible(true)
         await waitUntil { bluetoothController.devices.map(\.id) == ["opening-read"] }
         reader.resetCompletedReadCount()
 
@@ -324,7 +235,8 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         XCTAssertEqual(reader.completedReadCount, 1)
         store.setPopoverVisible(false)
         XCTAssertTrue(bluetoothController.isActive, "popover close must not stop the existing Settings activation")
-        bluetoothController.deactivate()
+        store.setBluetoothSettingsVisible(false)
+        XCTAssertFalse(bluetoothController.isActive)
         store.stop()
     }
 
@@ -478,32 +390,6 @@ private final class ImmediateCountingBluetoothReader: BluetoothPairedDeviceReadi
 private final class PermissionTimingBluetoothReader: BluetoothPairedDeviceReading {
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
         completion(.success([]))
-    }
-}
-
-@MainActor
-private final class PermissionTimingBluetoothRadioBackend: BluetoothRadioPowerBacking {
-    var isAvailable: Bool { true }
-    var power: BluetoothRadioPower
-    let acceptsWrites: Bool
-    private(set) var readCount = 0
-    private(set) var setRequests: [Bool] = []
-
-    init(power: BluetoothRadioPower, acceptsWrites: Bool = true) {
-        self.power = power
-        self.acceptsWrites = acceptsWrites
-    }
-
-    func readPower() -> BluetoothRadioPower {
-        readCount += 1
-        return power
-    }
-
-    func setPower(_ enabled: Bool) async -> Bool {
-        setRequests.append(enabled)
-        guard acceptsWrites else { return false }
-        power = enabled ? .on : .off
-        return true
     }
 }
 

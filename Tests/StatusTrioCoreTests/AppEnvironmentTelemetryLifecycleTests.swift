@@ -66,6 +66,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
             imageCache: dockImageCache
         )
         let reporter = LifecycleTelemetryReporter()
+        let profilerCache = BluetoothProfilerReportCache()
         var pressureSources: [LifecyclePressureSource] = []
         let memoryPressure = MemoryPressureMonitor { handler in
             let source = LifecyclePressureSource(handler: handler)
@@ -95,7 +96,8 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
                 notificationCenter: NotificationCenter()
             ),
             telemetryReporter: reporter,
-            memoryPressureMonitor: memoryPressure
+            memoryPressureMonitor: memoryPressure,
+            bluetoothProfilerCache: profilerCache
         )
         defer { environment.stop() }
 
@@ -147,10 +149,18 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
             "Pressure must preserve the current application image without rerendering"
         )
 
-        BluetoothProfilerReportCache.shared.store(Data([1, 2, 3]))
-        XCTAssertEqual(BluetoothProfilerReportCache.shared.storedEntryCount, 1)
+        profilerCache.store(Data([1, 2, 3]))
+        XCTAssertEqual(profilerCache.storedEntryCount, 1)
+        let externalReader = profilerCache.acquireReader()
         environment.stop()
-        XCTAssertEqual(BluetoothProfilerReportCache.shared.storedEntryCount, 0)
+        XCTAssertEqual(
+            profilerCache.storedEntryCount,
+            1,
+            "environment stop must preserve a report with a live external reader"
+        )
+        XCTAssertEqual(profilerCache.activeReaderCount, 1)
+        profilerCache.releaseReader(externalReader)
+        XCTAssertEqual(profilerCache.storedEntryCount, 0)
 
         XCTAssertEqual(reporter.stopCount, 1)
         XCTAssertEqual(battery.stopCount, 1)

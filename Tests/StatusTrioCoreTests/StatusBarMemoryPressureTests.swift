@@ -28,8 +28,10 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         XCTAssertTrue(popover.isShown)
         XCTAssertNotNil(popover.contentViewController)
 
-        popover.close()
-        waitUntilClosed(popover)
+        let didClose = expectation(forNotification: NSPopover.didCloseNotification, object: popover)
+        popover.animates = false
+        popover.performClose(nil)
+        wait(for: [didClose], timeout: 2)
         XCTAssertFalse(popover.isShown)
         XCTAssertNotNil(
             popover.contentViewController,
@@ -41,11 +43,33 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         XCTAssertNil(popover.contentViewController)
     }
 
-    private func waitUntilClosed(_ popover: NSPopover) {
-        let deadline = Date().addingTimeInterval(2)
-        while popover.isShown, Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+    func testNilFirstTeardownReleasesInactivePanelStateWithoutEndingContentOwnership() throws {
+        let harness = try StatusBarPressureHarness()
+        defer { harness.cleanUp() }
+
+        harness.controller.togglePopover(anchoredAtScreenPoint: harness.anchorPoint)
+        let popover = harness.controller.popoverForTesting
+        XCTAssertTrue(popover.isShown)
+        XCTAssertFalse(harness.controller.panelForTesting.batteryDetails.rows.isEmpty)
+
+        let didClose = expectation(forNotification: NSPopover.didCloseNotification, object: popover)
+        popover.animates = false
+        popover.performClose(nil)
+        wait(for: [didClose], timeout: 2)
+        XCTAssertNotNil(popover.contentViewController)
+
+        popover.contentViewController = nil
+        var ownershipEndCount = 0
+        harness.controller.onPopoverContentReleased = {
+            ownershipEndCount += 1
         }
+        XCTAssertFalse(harness.controller.panelForTesting.batteryDetails.rows.isEmpty)
+
+        harness.controller.trimForMemoryPressure()
+
+        XCTAssertFalse(harness.store.hasOpenPopoverPanel)
+        XCTAssertTrue(harness.controller.panelForTesting.batteryDetails.rows.isEmpty)
+        XCTAssertEqual(ownershipEndCount, 0)
     }
 }
 
@@ -96,7 +120,7 @@ private final class StatusBarPressureHarness {
     }
 }
 
-private enum HarnessError: Error {
+enum HarnessError: Error {
     case missingDefaults
 }
 

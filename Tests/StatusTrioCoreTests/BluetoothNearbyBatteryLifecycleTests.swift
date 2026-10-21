@@ -253,6 +253,49 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testReleaseTransientStateCancelsNearbyExpiryWork() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
+        controller.requestNearbyBLEDiscovery("settings")
+        let device = NearbyBluetoothBatteryDevice(
+            id: UUID(),
+            name: "Sensor",
+            batteryLevel: 73,
+            model: nil,
+            manufacturer: nil,
+            lastUpdated: Date().addingTimeInterval(-30)
+        )
+        controller.setVisibleNearbyBLEDevices([device.id], for: "panel")
+        scanner.publish([device])
+        await Task.yield()
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device])
+
+        controller.releaseTransientState()
+
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+        XCTAssertEqual(scanner.stopCount, 1)
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
+
+        controller.activate()
+        monitor.emit(authorization: .allowed, state: .poweredOn)
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        XCTAssertEqual(
+            scanner.startCount,
+            2,
+            "fresh visible surfaces may restart discovery after transient state is released"
+        )
+        XCTAssertTrue(
+            scanner.allowedReadDeviceIDs.isEmpty,
+            "released row claims must not survive into the fresh scanner session"
+        )
+        controller.deactivate()
+        try? await Task.sleep(for: .milliseconds(30))
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+    }
+
     func testDeinitWithoutDeactivateStopsNearbyScanner() async {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
