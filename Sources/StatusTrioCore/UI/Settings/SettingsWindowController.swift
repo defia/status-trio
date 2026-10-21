@@ -14,6 +14,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private var localizationCancellable: AnyCancellable?
     private var authorizationCancellable: AnyCancellable?
     private var ownsActivationPolicy = false
+    private var previewVisibilityObserver: ((Bool) -> Void)?
+    private var isPreviewWindowVisible = false
     /// Track the published initial state as well as subsequent updates, so a
     /// refresh of an already-known grant is not mistaken for a permission decision.
     private var lastBluetoothAuthorization: BluetoothAuthorizationStatus
@@ -63,6 +65,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
+    func startPreviewResourceObservation(_ observer: @escaping (Bool) -> Void) {
+        guard previewVisibilityObserver == nil else { return }
+        previewVisibilityObserver = observer
+        observer(isPreviewWindowVisible)
+    }
+
+    func stopPreviewResourceObservation() {
+        guard previewVisibilityObserver != nil else { return }
+        previewVisibilityObserver = nil
+    }
+
     func show() {
         let window = window ?? makeWindow()
         self.window = window
@@ -75,11 +88,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
+        setPreviewWindowVisible(true)
     }
 
     func windowWillClose(_ notification: Notification) {
         statusStore.setSettingsVisible(false)
         leaveActivationPolicyIfNeeded()
+        setPreviewWindowVisible(false)
         window = nil
     }
 
@@ -92,6 +107,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
+        setPreviewWindowVisible(true)
     }
 
     private func makeWindow() -> NSWindow {
@@ -143,5 +159,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         guard ownsActivationPolicy else { return }
         ownsActivationPolicy = false
         activationPolicy.leaveTemporaryRegularMode()
+    }
+
+    private func setPreviewWindowVisible(_ visible: Bool) {
+        guard isPreviewWindowVisible != visible else { return }
+        isPreviewWindowVisible = visible
+        previewVisibilityObserver?(visible)
     }
 }

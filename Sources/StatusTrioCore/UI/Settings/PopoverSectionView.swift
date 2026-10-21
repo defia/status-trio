@@ -62,8 +62,8 @@ struct PopoverSectionView: View {
                 guard section == .bluetooth, enabled != wasEnabled else { return }
                 if enabled {
                     NSApp.activate(ignoringOtherApps: true)
+                    statusStore.requestBluetoothAuthorization()
                 }
-                statusStore.setBluetoothDeviceMonitoringEnabled(enabled)
             }
         )
     }

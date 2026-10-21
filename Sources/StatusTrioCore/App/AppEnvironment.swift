@@ -20,13 +20,17 @@ final class AppEnvironment {
     let dockVisibilityMonitor: (any DockVisibilityMonitoring)?
     let telemetryReporter: any TelemetryReporting
     let bluetoothAudioIconOverrideSynchronizer = BluetoothAudioIconOverrideSynchronizer()
+    private let bluetoothProfilerCache: BluetoothProfilerReportCache
     private let bluetoothNearbyBatteryOptOutSynchronizer = BluetoothNearbyBatteryOptOutSynchronizer()
     private let lowPowerModeControlSynchronizer = LowPowerModeControlSynchronizer()
     private let memoryPressureMonitor: MemoryPressureMonitor
+    private let previewResourceLifecycle: PreviewResourceLifecycle
 
     private var chargingEffectCancellables = Set<AnyCancellable>()
     private var inputSourceLifecycleCancellables = Set<AnyCancellable>()
+    private var previewResourceLifecycleCancellables = Set<AnyCancellable>()
     private var hasSubscribedToChargingEffectInputs = false
+    private var isPreviewResourceLifecycleStarted = false
     private var menuBarChargingEffectEnabled: Bool
     private var dockChargingEffectEnabled: Bool
     private var dockChargingAnimationShouldRun = false
@@ -49,7 +53,9 @@ final class AppEnvironment {
         dockChargingAnimationPresenter: (any DockChargingAnimationPresenting)? = nil,
         dockVisibilityMonitor: (any DockVisibilityMonitoring)? = nil,
         telemetryReporter: any TelemetryReporting,
-        memoryPressureMonitor: MemoryPressureMonitor? = nil
+        memoryPressureMonitor: MemoryPressureMonitor? = nil,
+        bluetoothProfilerCache: BluetoothProfilerReportCache = .shared,
+        previewResourceLifecycle: PreviewResourceLifecycle? = nil
     ) {
         self.store = store
         self.settings = settings
@@ -68,11 +74,14 @@ final class AppEnvironment {
         self.dockVisibilityMonitor = dockVisibilityMonitor
         self.telemetryReporter = telemetryReporter
         self.memoryPressureMonitor = memoryPressureMonitor ?? MemoryPressureMonitor()
+        self.bluetoothProfilerCache = bluetoothProfilerCache
+        self.previewResourceLifecycle = previewResourceLifecycle ?? PreviewResourceLifecycle()
         self.menuBarChargingEffectEnabled = settings.showsMenuBarChargingEffect
         self.dockChargingEffectEnabled = settings.showsDockChargingEffect
     }
 
     func start() {
+        startPreviewResourceLifecycleIfNeeded()
         memoryPressureMonitor.onPressure = { [weak self] in
             self?.releaseRebuildableResources()
         }
@@ -119,6 +128,7 @@ final class AppEnvironment {
         store.bindLocalIPSettings(settings)
         store.bindMobileBatterySettings(settings)
         store.bindLowPowerModeSettings(settings)
+        store.bindBluetoothSettings(settings)
         store.start()
         telemetryReporter.start()
     }
@@ -129,6 +139,7 @@ final class AppEnvironment {
         telemetryReporter.stop()
         chargingEffectClock.stop()
         statusBarController.visibilityDidChange = nil
+        stopPreviewResourceLifecycle()
         appIconController.dockChargingAnimationEligibilityDidChange = nil
         appIconController.dockContentDidChange = nil
         appIconController.systemPollDidFire = nil
@@ -151,16 +162,48 @@ final class AppEnvironment {
         store.stop()
         // Both profiler consumers belong to the stopped store. A pressure
         // warning alone must not invalidate a report another reader is using.
-        BluetoothProfilerReportCache.shared.reset()
+        bluetoothProfilerCache.resetIfUnused()
         iconPresentation.stop()
         releaseRebuildableResources()
+    }
+
+    private func startPreviewResourceLifecycleIfNeeded() {
+        guard !isPreviewResourceLifecycleStarted else { return }
+        isPreviewResourceLifecycleStarted = true
+        previewResourceLifecycle.start()
+        settingsWindowController.startPreviewResourceObservation { [weak self] visible in
+            self?.previewResourceLifecycle.setPreviewOwner(.settings, visible: visible)
+        }
+        onboardingWindowController.startPreviewResourceObservation { [weak self] visible in
+            self?.previewResourceLifecycle.setPreviewOwner(.onboarding, visible: visible)
+        }
+        store.$isPopoverVisible
+            .removeDuplicates()
+            .sink { [weak self] visible in
+                guard let self, visible else { return }
+                previewResourceLifecycle.setPopoverContentOwned(true)
+            }
+            .store(in: &previewResourceLifecycleCancellables)
+        statusBarController.onPopoverContentReleased = { [weak self] in
+            self?.previewResourceLifecycle.setPopoverContentOwned(false)
+        }
+    }
+
+    private func stopPreviewResourceLifecycle() {
+        guard isPreviewResourceLifecycleStarted else { return }
+        isPreviewResourceLifecycleStarted = false
+        previewResourceLifecycleCancellables.removeAll()
+        statusBarController.onPopoverContentReleased = nil
+        settingsWindowController.stopPreviewResourceObservation()
+        onboardingWindowController.stopPreviewResourceObservation()
+        previewResourceLifecycle.stop()
     }
 
     private func releaseRebuildableResources() {
         appIconController.releaseCachedImages()
         statusBarController.trimForMemoryPressure()
         dockChargingAnimationPresenter?.trimForMemoryPressure()
-        DockIconPreviewCache.shared.reset()
+        previewResourceLifecycle.releaseIfIdle()
         IconImageDecodeCache.shared.reset()
         DockIconRenderer.resetScratchContexts()
         StatusIconRenderer.resetInkOffsetCaches()

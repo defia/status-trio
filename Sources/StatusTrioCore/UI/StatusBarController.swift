@@ -14,7 +14,7 @@ private struct StatusBarAccessibilityKey: Equatable {
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
     static let popoverToggleLockoutInterval: TimeInterval = 0.25
-    static let popoverContentReleaseDelay: TimeInterval = 60
+    static let popoverContentReleaseDelay: TimeInterval = 5
 
     /// Draws the monochrome template base the menu bar hands to the system.
     typealias MenuBarBaseRenderer = @MainActor (
@@ -50,6 +50,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let renderMenuBarBase: MenuBarBaseRenderer
     private let renderMenuBarOverlay: MenuBarOverlayRenderer
     private let accessibilityValueDidChange: @MainActor (String) -> Void
+    private let popoverContentReleaseSleeper: @Sendable (Duration) async throws -> Void
     let chargingEffectClock: ChargingEffectClock
     private var iconPresentationCancellable: AnyCancellable?
     private var accessibilityCancellable: AnyCancellable?
@@ -84,6 +85,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     var cachedChargingFrameRebuildCount: Int { chargingFrameCache.rebuildCount }
     var rasterizedChargingFrameCount: Int { chargingFrameCache.rasterizedFrameCount }
     var popoverForTesting: NSPopover { popover }
+    var panelForTesting: StatusPanelViewModel { panelViewModel }
+    /// Invokes once when the controller clears a present
+    /// `contentViewController`. This marks the end of popover content ownership;
+    /// it does not mean the old hosting object has deallocated. Task 4 must
+    /// treat it as a candidate boundary and still inspect visible owners.
+    var onPopoverContentReleased: (@MainActor () -> Void)?
+    var popoverContentReleaseTaskForTesting: Task<Void, Never>? {
+        popoverContentReleaseTask
+    }
+    var didPresentStaticContent: (@MainActor () -> Void)?
 
     /// What the menu-bar path did, so a test can show that a steady 20-Hz tick
     /// neither re-rasterizes the static content nor reassigns
@@ -119,18 +130,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var popoverToggleGate = PopoverToggleGate(
         lockout: StatusBarController.popoverToggleLockoutInterval
     )
-    private var popoverContentRetention = PopoverContentRetention(
-        releaseDelay: StatusBarController.popoverContentReleaseDelay
-    )
     private var popoverContentReleaseTask: Task<Void, Never>?
+    private var popoverContentGeneration: UInt64 = 0
     private let inputSourceController: InputSourceController
-    /// How a presentation resolves the appearance it rasterizes in.
-    ///
-    /// Production reads the button's effective appearance. A test pins it: the
-    /// status item's effective appearance only settles once AppKit installs the
-    /// item into the menu bar, so a fixture that counts rasters would otherwise
-    /// see an unrelated second presentation each time that install lands (#133).
-    private let appearanceProvider: (@MainActor () -> NSAppearance)?
 
     init(
         store: SystemStatusStore,
@@ -142,6 +144,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         quitAction: @escaping () -> Void,
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
         accessibilityValueDidChange: @escaping @MainActor (String) -> Void = { _ in },
+        panelUpdateScheduler: (any PanelPresentationUpdateScheduling)? = nil,
+        popoverContentReleaseSleeper: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
         renderMenuBarBase: @escaping MenuBarBaseRenderer = { scene, size, scale, appearance in
             StatusIconRenderer.menuBarTemplateBase(
                 scene: scene,
@@ -159,10 +165,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 phase: phase
             )
         },
-        inputSourceController: InputSourceController? = nil,
-        appearanceProvider: (@MainActor () -> NSAppearance)? = nil
+        inputSourceController: InputSourceController? = nil
     ) {
-        self.appearanceProvider = appearanceProvider
         self.store = store
         self.settings = settings
         let resolvedInputSourceController = inputSourceController ?? InputSourceController()
@@ -173,11 +177,18 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             inputSourceController: resolvedInputSourceController
         )
         self.panelActions = panelActions
+        let resolvedPanelUpdateScheduler: any PanelPresentationUpdateScheduling
+        if let panelUpdateScheduler {
+            resolvedPanelUpdateScheduler = panelUpdateScheduler
+        } else {
+            resolvedPanelUpdateScheduler = StatusBarPanelUpdateScheduler()
+        }
         self.panelViewModel = StatusPanelViewModel(
             store: store,
             settings: settings,
             localization: localization,
             actions: panelActions,
+            updateScheduler: resolvedPanelUpdateScheduler,
             inputSourceController: resolvedInputSourceController
         )
         self.iconPresentation = iconPresentation
@@ -185,6 +196,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.renderMenuBarBase = renderMenuBarBase
         self.renderMenuBarOverlay = renderMenuBarOverlay
         self.accessibilityValueDidChange = accessibilityValueDidChange
+        self.popoverContentReleaseSleeper = popoverContentReleaseSleeper
         self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
         self.quitAction = quitAction
@@ -272,6 +284,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             clearAnimationPresentation()
             popover.performClose(nil)
             store.setPopoverVisible(false)
+            panelViewModel.stop()
+            if !popover.isShown {
+                releasePopoverContentIfPresent()
+            }
             statusItem.isVisible = false
         }
         visibilityDidChange?()
@@ -283,6 +299,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     func flushPendingPresentationForTesting() {
         renderCoalescer.flushPending()
+    }
+
+    func resetPopoverToggleGateForTesting() {
+        popoverToggleGate = PopoverToggleGate(
+            lockout: Self.popoverToggleLockoutInterval
+        )
     }
 
     private func configureButton() {
@@ -350,6 +372,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 quit: quitAction
             )
         }
+        // Task 2's start() refreshes synchronously from the store before the
+        // first SwiftUI layout pass, so a reused hosting controller cannot show
+        // the values it had when the popover last closed.
         panelViewModel.start()
         let hostingController = NSHostingController(rootView: rootView)
         if #available(macOS 14.0, *) {
@@ -397,9 +422,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         preferredEdge: NSRectEdge
     ) {
         cancelPopoverContentRelease()
-        popoverContentRetention.markOpened()
         store.setPopoverVisible(true)
         installPopoverContentIfNeeded()
+        // An unretained hosting controller is installed above; a retained one
+        // still has a stopped panel, so every open restores current state.
+        panelViewModel.start()
         // One bounded refresh per open covers a lost distributed notification
         // without any polling while the popover is closed.
         refreshInputSourceIfNeeded()
@@ -565,17 +592,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
-        // Read this before closing the popover: a detail panel keeps its own
-        // SwiftUI state, so reusing the built content would reopen on that
-        // panel. The battery page also clears its collector on disappear, so
-        // the flag has to be sampled while the panel is still open.
         let hadOpenDetails = store.hasOpenPopoverPanel
         store.setPopoverVisible(false)
         store.closePopoverDetails()
+        // Listening to store publishers is not free and none of their values can
+        // be drawn while the popover is closed. Stop here rather than waiting for
+        // the five-second hosting retention window.
+        panelViewModel.stop()
         if hadOpenDetails {
-            cancelPopoverContentRelease()
-            popover.contentViewController = nil
-            panelViewModel.stop()
+            invalidatePopoverContentReleaseTask()
+            releasePopoverContentIfPresent()
         } else {
             schedulePopoverContentRelease()
         }
@@ -585,30 +611,58 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// it later keeps idle memory low.
     private func schedulePopoverContentRelease() {
         cancelPopoverContentRelease()
-        popoverContentRetention.markClosed(at: Date())
         let delay = Self.popoverContentReleaseDelay
+        popoverContentGeneration &+= 1
+        let generation = popoverContentGeneration
+        let sleeper = popoverContentReleaseSleeper
         popoverContentReleaseTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled, let self else { return }
-            guard popoverContentRetention.shouldRelease(at: Date()), !popover.isShown else { return }
-            popover.contentViewController = nil
-            panelViewModel.stop()
+            do {
+                try await sleeper(.seconds(delay))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled,
+                  let self,
+                  popoverContentGeneration == generation,
+                  !popover.isShown else {
+                return
+            }
             popoverContentReleaseTask = nil
+            releasePopoverContentIfPresent()
         }
     }
 
     func trimForMemoryPressure() {
         chargingFrameCache.trimForMemoryPressure()
         guard !popover.isShown else { return }
-        cancelPopoverContentRelease()
-        popover.contentViewController = nil
-        panelViewModel.stop()
+        releasePopoverContentIfPresent()
     }
 
     private func cancelPopoverContentRelease() {
+        invalidatePopoverContentReleaseTask()
+    }
+
+    private func invalidatePopoverContentReleaseTask() {
+        popoverContentGeneration &+= 1
         popoverContentReleaseTask?.cancel()
         popoverContentReleaseTask = nil
-        popoverContentRetention.markOpened()
+    }
+
+    /// The only teardown entry point. Releasing Task 2's inactive presentation
+    /// state is idempotent and runs even when another owner already cleared
+    /// `contentViewController`; only that presence transition ends content
+    /// ownership and invokes the callback.
+    private func releasePopoverContentIfPresent() {
+        invalidatePopoverContentReleaseTask()
+        let endedContentOwnership = popover.contentViewController != nil
+        if endedContentOwnership {
+            popover.contentViewController = nil
+        }
+        panelViewModel.stop()
+        panelViewModel.releaseInactivePresentationState()
+        if endedContentOwnership {
+            onPopoverContentReleased?()
+        }
     }
 
     /// Everything one menu-bar presentation needs. The static key deliberately
@@ -639,7 +693,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             button.window?.backingScaleFactor
             ?? NSScreen.main?.backingScaleFactor
             ?? 1
-        let appearance = appearanceProvider?() ?? button.effectiveAppearance
+        let appearance = button.effectiveAppearance
         let staticKey = StatusBarRenderKey(
             scene: scene,
             iconSize: iconSize,
@@ -670,6 +724,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             baseIsCustomRaster = false
             renderCache.recordSuccessfulRender(staticKey)
             renderCounters.staticPresentations += 1
+            didPresentStaticContent?()
         }
 
         // A fallback raster replaced the template base; put the re-tintable image
@@ -1059,5 +1114,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             at: NSPoint(x: 0, y: button.bounds.maxY + 4),
             in: button
         )
+    }
+}
+
+@MainActor
+private final class StatusBarPanelUpdateScheduler: PanelPresentationUpdateScheduling {
+    func schedule(_ update: @escaping @MainActor () -> Void) {
+        Task { @MainActor in
+            await Task.yield()
+            update()
+        }
     }
 }

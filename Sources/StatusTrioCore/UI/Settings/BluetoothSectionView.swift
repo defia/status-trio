@@ -13,6 +13,7 @@ struct BluetoothSectionView: View {
     @ObservedObject var appleDeviceDiscovery: AppleDeviceDiscoveryController
     @Binding var previewIsDark: Bool
     @EnvironmentObject private var localization: Localization
+    @State private var settingsDemandToken: BluetoothSettingsDemandToken?
 
     var body: some View {
         SettingsPage(pinnedHeader: {
@@ -35,21 +36,6 @@ struct BluetoothSectionView: View {
                     subtitle: localization.string(.settingsBluetoothShowInStatusPanelDescription),
                     isOn: showInStatusPanelBinding
                 )
-
-                if BluetoothPowerControlVisibility.canConfigure(
-                    authorization: bluetoothDevices.authorization,
-                    showsInStatusPanel: store.enabledPopupSections.contains(.bluetooth)
-                ) {
-                    SettingsDivider()
-
-                    SettingsToggleRow(
-                        symbol: "power.circle",
-                        tint: .blue,
-                        title: localization.string(.settingsBluetoothPowerControl),
-                        subtitle: localization.string(.settingsBluetoothPowerControlDescription),
-                        isOn: $store.showsBluetoothPowerControl
-                    )
-                }
 
                 SettingsDivider()
 
@@ -278,17 +264,18 @@ struct BluetoothSectionView: View {
             deviceListGroup
             deviceOrderGroup
         }
-        .onAppear { claimDeviceSurface() }
-        .task(id: bluetoothDevices.authorization == .allowed) {
-            if bluetoothDevices.authorization == .allowed { claimDeviceSurface() }
-            else { bluetoothDevices.releaseVisibleSurface(Self.orderSurfaceToken) }
+        .onAppear {
+            if let settingsDemandToken {
+                statusStore.endBluetoothSettingsDemand(settingsDemandToken)
+            }
+            settingsDemandToken = statusStore.beginBluetoothSettingsDemand()
         }
         .onDisappear {
-            bluetoothDevices.releaseVisibleSurface(Self.orderSurfaceToken)
+            guard let settingsDemandToken else { return }
+            statusStore.endBluetoothSettingsDemand(settingsDemandToken)
+            self.settingsDemandToken = nil
         }
     }
-
-    private static let orderSurfaceToken = "bluetooth.settings.order.surface"
 
     private var bluetoothAudioIconChoiceRow: some View {
         SettingsRow(
@@ -400,22 +387,6 @@ struct BluetoothSectionView: View {
             return options[0]
         }
         return picked
-    }
-
-    /// The pane shows paired devices, so it needs the same monitor the popover
-    /// uses — otherwise a fresh launch that opens Settings shows "No paired
-    /// devices available" while devices are paired, and drag-to-reorder is
-    /// unreachable. Only an app that already holds the grant may activate the
-    /// monitor, because starting it is what raises the system prompt; the gate
-    /// keeps this pane from ever prompting on its own. The claim stops the
-    /// safety-net poll when the pane goes away, but it never turns the enabled
-    /// flag off: the panel toggle and the popover own that.
-    private func claimDeviceSurface() {
-        guard BluetoothPanelActivation.shouldActivate(
-            authorization: bluetoothDevices.authorization
-        ) else { return }
-        bluetoothDevices.activate()
-        bluetoothDevices.holdVisibleSurface(Self.orderSurfaceToken)
     }
 
     private var deviceListGroup: some View {
@@ -638,8 +609,8 @@ struct BluetoothSectionView: View {
                 guard enabled != wasEnabled else { return }
                 if enabled {
                     NSApp.activate(ignoringOtherApps: true)
+                    statusStore.requestBluetoothAuthorization()
                 }
-                statusStore.setBluetoothDeviceMonitoringEnabled(enabled)
             }
         )
     }
