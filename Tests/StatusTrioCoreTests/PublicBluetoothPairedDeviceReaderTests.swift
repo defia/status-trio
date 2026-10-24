@@ -21,20 +21,20 @@ struct PublicBluetoothPairedDeviceReaderTests {
             )
         ]))
 
-        let devices = try #require(devices(from: result))
-        #expect(devices.count == 2)
-        #expect(devices[0].id == "AC-90-85-C2-9C-1F")
-        #expect(devices[0].name == "AirPods")
-        #expect(devices[0].kind == .audio)
-        #expect(devices[0].isConnected)
-        #expect(devices[0].vendorID == nil)
-        #expect(devices[0].productID == nil)
-        #expect(devices[0].airPodsModel == nil)
-        #expect(devices[0].isUnpairedGhost == false)
-        #expect(devices[0].isReadOverTheAir == false)
+        let mappedDevices = try #require(devices(from: result))
+        #expect(mappedDevices.count == 2)
+        #expect(mappedDevices[0].id == "AC-90-85-C2-9C-1F")
+        #expect(mappedDevices[0].name == "AirPods")
+        #expect(mappedDevices[0].kind == .audio)
+        #expect(mappedDevices[0].isConnected)
+        #expect(mappedDevices[0].vendorID == nil)
+        #expect(mappedDevices[0].productID == nil)
+        #expect(mappedDevices[0].airPodsModel == nil)
+        #expect(mappedDevices[0].isUnpairedGhost == false)
+        #expect(mappedDevices[0].isReadOverTheAir == false)
 
-        #expect(devices[1].kind == .peripheral(.keyboard))
-        #expect(devices[1].isConnected == false)
+        #expect(mappedDevices[1].kind == .peripheral(.keyboard))
+        #expect(mappedDevices[1].isConnected == false)
     }
 
     @Test(arguments: [
@@ -144,11 +144,11 @@ struct PublicBluetoothPairedDeviceReaderTests {
             )
         ]))
 
-        let devices = try #require(devices(from: result))
-        #expect(devices.count == 2)
-        #expect(devices[0].name == "Connected duplicate")
-        #expect(devices[0].isConnected)
-        #expect(devices[1].name == "Second device")
+        let mappedDevices = try #require(devices(from: result))
+        #expect(mappedDevices.count == 2)
+        #expect(mappedDevices[0].name == "Connected duplicate")
+        #expect(mappedDevices[0].isConnected)
+        #expect(mappedDevices[1].name == "Second device")
     }
 
     @Test func skipsNilEmptyAndInvalidMetadata() throws {
@@ -190,10 +190,10 @@ struct PublicBluetoothPairedDeviceReaderTests {
             )
         ]))
 
-        let devices = try #require(devices(from: result))
-        #expect(devices.count == 1)
-        #expect(devices[0].id == "22-33-44-55-66-77")
-        #expect(devices[0].name == "Valid device")
+        let mappedDevices = try #require(devices(from: result))
+        #expect(mappedDevices.count == 1)
+        #expect(mappedDevices[0].id == "22-33-44-55-66-77")
+        #expect(mappedDevices[0].name == "Valid device")
     }
 
     @Test func emptyListIsSuccessAndOtherStatesStayDistinct() throws {
