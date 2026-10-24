@@ -15,16 +15,16 @@ final class PanelActionAlignmentTests: XCTestCase {
                 onOpenSoundSettings: {}
             )
         )
-        let actions = probe.trailingGlyphRects(count: 2, minimumX: 200)
+        let actions = probe.leadingAndTrailingGlyphRects(maximumWidth: 24)
         XCTAssertEqual(actions.count, 2, "volume mute and Settings glyphs must render")
         guard actions.count == 2 else { return }
 
-        let rowCenter = probe.controlRowCenterY(excluding: actions)
+        let rowCenter = try XCTUnwrap(probe.sliderControlCenterY)
         for (name, rect) in zip(["mute", "settings"], actions) {
             let center = try XCTUnwrap(probe.glyphCenterY(in: rect))
             XCTAssertEqual(
                 center,
-                try XCTUnwrap(rowCenter),
+                rowCenter,
                 accuracy: 1,
                 "\(name) center must match the volume row's rendered center"
             )

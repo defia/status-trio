@@ -5,6 +5,7 @@ import AppKit
 struct SummaryActionAlignmentProbe {
     let bitmap: NSBitmapImageRep
     let scale: CGFloat
+    let hosting: NSView
 
     init?(_ hosting: NSView, pixelScale: CGFloat? = nil) {
         let image: NSBitmapImageRep?
@@ -29,11 +30,32 @@ struct SummaryActionAlignmentProbe {
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
 
         self.bitmap = bitmap
+        self.hosting = hosting
         scale = CGFloat(bitmap.pixelsWide) / hosting.bounds.width
     }
 
     func trailingGlyphRects(
         count: Int,
+        minimumX: CGFloat = 0,
+        maxX: CGFloat? = nil,
+        maximumWidth: CGFloat? = nil
+    ) -> [CGRect] {
+        glyphRects(
+            minimumX: minimumX,
+            maxX: maxX,
+            maximumWidth: maximumWidth
+        ).suffix(count).map { $0 }
+    }
+
+    func leadingAndTrailingGlyphRects(maximumWidth: CGFloat) -> [CGRect] {
+        let glyphs = glyphRects(maximumWidth: maximumWidth)
+        guard let first = glyphs.first, let last = glyphs.last, first != last else {
+            return glyphs.first.map { [$0] } ?? []
+        }
+        return [first, last]
+    }
+
+    func glyphRects(
         minimumX: CGFloat = 0,
         maxX: CGFloat? = nil,
         maximumWidth: CGFloat? = nil
@@ -87,16 +109,14 @@ struct SummaryActionAlignmentProbe {
         } else {
             eligibleGroups = groups
         }
-        return eligibleGroups
-            .suffix(count)
-            .map { group in
-                CGRect(
-                    x: CGFloat(group.lowerBound) / scale,
-                    y: 0,
-                    width: CGFloat(group.count) / scale,
-                    height: CGFloat(bitmap.pixelsHigh) / scale
-                )
-            }
+        return eligibleGroups.map { group in
+            CGRect(
+                x: CGFloat(group.lowerBound) / scale,
+                y: 0,
+                width: CGFloat(group.count) / scale,
+                height: CGFloat(bitmap.pixelsHigh) / scale
+            )
+        }
     }
 
     func glyphCenterY(in rect: CGRect) -> CGFloat? {
@@ -106,6 +126,11 @@ struct SummaryActionAlignmentProbe {
     func glyphCenterY(from minX: CGFloat, to maxX: CGFloat) -> CGFloat? {
         let rect = CGRect(x: minX, y: 0, width: maxX - minX, height: CGFloat(bitmap.pixelsHigh) / scale)
         return inkBounds(in: rect).map(\.midY)
+    }
+
+    var sliderControlCenterY: CGFloat? {
+        findSubview(in: hosting, named: "ScrollTargetView")
+            .map { $0.convert($0.bounds, to: hosting).midY }
     }
 
     func controlRowCenterY(
@@ -179,5 +204,17 @@ struct SummaryActionAlignmentProbe {
             width: CGFloat(maxPixelX - minPixelX) / scale,
             height: CGFloat(maxPixelY - minPixelY) / scale
         )
+    }
+
+    private func findSubview(in view: NSView, named className: String) -> NSView? {
+        if String(describing: type(of: view)) == className {
+            return view
+        }
+        for subview in view.subviews {
+            if let match = findSubview(in: subview, named: className) {
+                return match
+            }
+        }
+        return nil
     }
 }

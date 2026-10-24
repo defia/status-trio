@@ -58,6 +58,12 @@ Swift 6.1.2 上。
   Task 排队时间算进了“期限后 1 秒内完成”的上界；该测试从 PID 文件出现时开始
   计上界，同时保留原先至少 1.2 秒的下界，证明 1 秒 deadline 与 kill grace
   确实经过，而非提前结束。
+- 下一次 Direct 预检 [`40105290055`](https://github.com/lingyired/status-trio/actions/runs/40105290055)
+  的 Store 通道通过，Direct 仍在同一个 volume 行失败。固定 2x 后，断言的 Mute
+  读数实际来自 `minimumX: 200` 截出的 `40%` 文本，而 `controlRowCenterY` 又把
+  slider 轨道和背景并入了行中心，所以它从未比较真正的 Mute/Settings。测试改为
+  选取首尾两个 24 pt action glyph，并以 `VolumeControlScrollTarget` 的 AppKit
+  frame 中心作为 slider 行中心；生产布局未因该测试缺陷而偏移。
 - 本地完整测试另暴露了进程 fixture 的冷 Python 启动可能耗尽就绪期限。改为
   `/bin/sh` 先安装忽略 TERM 的 trap、写 PID，再进入工作循环；取消、超时、
   SIGKILL 和耗时断言保持原样，失败时停止读取不存在的 PID 文件。
