@@ -888,6 +888,7 @@ write_clean_entitlements "$WORK/unreadable-directory"
 mkdir -p "$WORK/unreadable-directory/Contents/Resources/Unreadable"
 chmod 000 "$WORK/unreadable-directory/Contents/Resources/Unreadable"
 expect_rejected "unreadable nested directory" run_audit "$WORK/unreadable-directory"
+chmod 700 "$WORK/unreadable-directory/Contents/Resources/Unreadable"
 
 make_app symlink-escape >/dev/null
 write_clean_entitlements "$WORK/symlink-escape"
