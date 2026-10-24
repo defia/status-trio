@@ -35,7 +35,8 @@ struct SummaryActionAlignmentProbe {
     func trailingGlyphRects(
         count: Int,
         minimumX: CGFloat = 0,
-        maxX: CGFloat? = nil
+        maxX: CGFloat? = nil,
+        maximumWidth: CGFloat? = nil
     ) -> [CGRect] {
         let minimumPixelX = max(0, Int((minimumX * scale).rounded(.down)))
         let maximumPixelX = min(
@@ -44,9 +45,13 @@ struct SummaryActionAlignmentProbe {
         )
         let blankGap = max(1, Int((3 * scale).rounded()))
         guard minimumPixelX < maximumPixelX else { return [] }
+        // `cacheDisplay` leaves a one-pixel backing-store edge in this bitmap.
+        // It spans every column, so scanning it would merge the whole row.
+        let edgeInset = max(1, Int(scale.rounded(.up)))
+        let inkRange = edgeInset..<(bitmap.pixelsHigh - edgeInset)
         var hasInk = Array(repeating: false, count: maximumPixelX)
         for x in minimumPixelX..<maximumPixelX {
-            for y in 0..<bitmap.pixelsHigh {
+            for y in inkRange {
                 guard let color = bitmap.colorAt(x: x, y: y) else { continue }
                 let luminance = 0.299 * color.redComponent
                     + 0.587 * color.greenComponent
@@ -76,14 +81,22 @@ struct SummaryActionAlignmentProbe {
             groups.append(start..<lastInk + 1)
         }
 
-        return groups.suffix(count).map { group in
-            CGRect(
-                x: CGFloat(group.lowerBound) / scale,
-                y: 0,
-                width: CGFloat(group.count) / scale,
-                height: CGFloat(bitmap.pixelsHigh) / scale
-            )
+        let eligibleGroups: [Range<Int>]
+        if let maximumWidth {
+            eligibleGroups = groups.filter { CGFloat($0.count) / scale <= maximumWidth }
+        } else {
+            eligibleGroups = groups
         }
+        return eligibleGroups
+            .suffix(count)
+            .map { group in
+                CGRect(
+                    x: CGFloat(group.lowerBound) / scale,
+                    y: 0,
+                    width: CGFloat(group.count) / scale,
+                    height: CGFloat(bitmap.pixelsHigh) / scale
+                )
+            }
     }
 
     func glyphCenterY(in rect: CGRect) -> CGFloat? {
