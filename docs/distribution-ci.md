@@ -10,10 +10,13 @@ use `pull_request_target`, does not read pull-request titles or bodies as
 shell code, and does not use release credentials or a protected environment.
 The workflow declares only `actions: read` and `contents: read`.
 
-Both jobs check out `github.event.pull_request.merge_commit_sha`. Each job
-then checks that `git rev-parse HEAD`, `GITHUB_SHA`, and the event merge SHA
-are the same lowercase 40-character commit. The Direct and Store jobs run in
-parallel with the same cancellation group, so a new commit cancels an
+Both jobs check out `github.sha`, which is the PR merge commit for this event.
+The workflow captures that value in `PR_MERGE_SHA`, and each job checks that
+`git rev-parse HEAD`, `GITHUB_SHA`, and the captured merge SHA are the same
+lowercase 40-character commit. Do not source this value from workflow-level
+`github.event.pull_request.merge_commit_sha`; a real run showed that nested
+event expression evaluated empty before checkout. The Direct and Store jobs
+run in parallel with the same cancellation group, so a new commit cancels an
 obsolete PR run. The job timeouts are finite, and the workflow has no path
 filter that could silently skip one channel.
 
@@ -33,8 +36,11 @@ negative fixtures, then performs an unsigned compile and static audit:
 bash scripts/test-app-store-project-contract.sh
 bash scripts/test-app-store-bundle-contract.sh
 bash scripts/test-app-store-source-closure.sh
-APP_STORE_UNSIGNED=1 bash scripts/build-app-store.sh release no-open
+APP_STORE_UNSIGNED=1 \
+APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive \
+bash scripts/build-app-store.sh release no-open
 bash scripts/verify-app-store-bundle.sh dist/AppStore/StatusTrio.app --unsigned
+bash scripts/verify-app-store-archive-dsyms.sh .build/app-store/StatusTrio.xcarchive
 python3 scripts/verify-app-store-source-closure.py .build/app-store/source-membership.json
 ```
 

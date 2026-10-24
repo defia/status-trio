@@ -168,11 +168,21 @@ fixture="$(make_fixture wrong-checkout-sha)"
 ruby -e '
   path = ARGV[0]
   source = File.read(path)
-  source.sub!("          ref: ${{ github.event.pull_request.merge_commit_sha }}", "          ref: ${{ github.event.pull_request.head.sha }}") or
+  source.sub!("          ref: ${{ github.sha }}", "          ref: ${{ github.event.pull_request.head.sha }}") or
     abort "merge SHA checkout missing"
   File.write(path, source)
 ' "$fixture/pr-checks.yml"
 expect_failure "PR checkout from head SHA" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "checkout ref must be"
+
+fixture="$(make_fixture event-merge-sha)"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!("  PR_MERGE_SHA: ${{ github.sha }}\n", "  PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}\n") or
+    abort "PR merge SHA env missing"
+  File.write(path, source)
+' "$fixture/pr-checks.yml"
+expect_failure "PR merge SHA from empty event context" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "PR_MERGE_SHA must come from github.sha"
 
 fixture="$(make_fixture sha-not-reasserted)"
 ruby -e '
@@ -255,7 +265,7 @@ fixture="$(make_fixture store-bypassed)"
 ruby -e '
   path = ARGV[0]
   source = File.read(path)
-  source.sub!("          APP_STORE_UNSIGNED=1 \\\n            bash scripts/build-app-store.sh release no-open", "          echo skipped") or
+  source.sub!("          APP_STORE_UNSIGNED=1 \\\n            APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive \\\n            bash scripts/build-app-store.sh release no-open", "          echo skipped") or
     abort "Store build command missing"
   File.write(path, source)
 ' "$fixture/pr-checks.yml"
@@ -276,11 +286,21 @@ fixture="$(make_fixture pr-store-unsigned-removed)"
 ruby -e '
   path = ARGV[0]
   source = File.read(path)
-  source.sub!("          APP_STORE_UNSIGNED=1 \\\n            bash scripts/build-app-store.sh release no-open", "          bash scripts/build-app-store.sh release no-open") or
+  source.sub!("          APP_STORE_UNSIGNED=1 \\\n            APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive \\\n            bash scripts/build-app-store.sh release no-open", "          APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive \\\n            bash scripts/build-app-store.sh release no-open") or
     abort "Store unsigned build command missing"
   File.write(path, source)
 ' "$fixture/pr-checks.yml"
 expect_failure "PR Store unsigned flag removed" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "APP_STORE_UNSIGNED=1"
+
+fixture="$(make_fixture pr-store-archive-removed)"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!("          APP_STORE_UNSIGNED=1 \\\n            APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive \\\n            bash scripts/build-app-store.sh release no-open", "          APP_STORE_UNSIGNED=1 \\\n            bash scripts/build-app-store.sh release no-open") or
+    abort "Store archive path missing"
+  File.write(path, source)
+' "$fixture/pr-checks.yml"
+expect_failure "PR Store dSYM audit without archive build" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "store job is missing"
 
 fixture="$(make_fixture pr-store-signing-identity)"
 ruby -e '
@@ -330,7 +350,7 @@ direct-full|Run Direct full local verification
 store-project|Test Store project contract
 store-bundle-fixtures|Test Store bundle audit fixtures
 store-source-fixtures|Test Store source closure negative fixtures
-store-build|Build unsigned Store app
+store-build|Build unsigned Store archive
 store-bundle-audit|Verify unsigned Store bundle statically
 store-source-audit|Verify Store source closure
 EOF

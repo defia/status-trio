@@ -12,7 +12,7 @@ from typing import Any, Iterable
 
 
 SHELLS = {"bash", "sh", "/bin/bash", "/bin/sh", "/bin/zsh", "zsh"}
-TRUSTED_SHA_EXPR = "${{ github.event.pull_request.merge_commit_sha }}"
+TRUSTED_SHA_EXPR = "${{ github.sha }}"
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_URL = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
@@ -727,6 +727,13 @@ def check_pr_workflow(workflow: Workflow) -> None:
         True,
         "github.event.pull_request.number",
     )
+    env_node = workflow.env
+    if not isinstance(env_node, Mapping):
+        raise PolicyError(f"{workflow.path}: PR workflow env must be a mapping")
+    if scalar_text(env_node.get("PR_MERGE_SHA")) != TRUSTED_SHA_EXPR:
+        raise PolicyError(
+            f"{workflow.path}: PR_MERGE_SHA must come from github.sha, the PR merge commit"
+        )
     check_xcodegen_constants(workflow)
     if set(workflow.jobs) != {"direct", "store"}:
         raise PolicyError(f"{workflow.path}: jobs must be exactly direct and store")
@@ -836,7 +843,7 @@ def check_pr_workflow(workflow: Workflow) -> None:
         "bash scripts/test-app-store-project-contract.sh",
         "bash scripts/test-app-store-bundle-contract.sh",
         "bash scripts/test-app-store-source-closure.sh",
-        "APP_STORE_UNSIGNED=1 bash scripts/build-app-store.sh release no-open",
+        "APP_STORE_UNSIGNED=1 APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive bash scripts/build-app-store.sh release no-open",
         "bash scripts/verify-app-store-bundle.sh dist/AppStore/StatusTrio.app --unsigned",
         "bash scripts/verify-app-store-archive-dsyms.sh .build/app-store/StatusTrio.xcarchive",
         "python3 scripts/verify-app-store-source-closure.py .build/app-store/source-membership.json",

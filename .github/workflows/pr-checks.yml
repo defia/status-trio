@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+  PR_MERGE_SHA: ${{ github.sha }}
   XCODEGEN_VERSION: "2.46.0"
   XCODEGEN_ARCHIVE_URL: "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
   XCODEGEN_ARCHIVE_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
@@ -27,7 +27,7 @@ jobs:
       - name: Check out the PR merge commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! "${PR_MERGE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::pull_request.merge_commit_sha is not a lowercase 40-character SHA."
+            echo "::error::github.sha is not a lowercase 40-character SHA."
             exit 1
           fi
           ACTUAL_SHA="$(git rev-parse HEAD)"
@@ -200,7 +200,7 @@ jobs:
       - name: Check out the PR merge commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -209,7 +209,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! "${PR_MERGE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::pull_request.merge_commit_sha is not a lowercase 40-character SHA."
+            echo "::error::github.sha is not a lowercase 40-character SHA."
             exit 1
           fi
           ACTUAL_SHA="$(git rev-parse HEAD)"
@@ -366,12 +366,13 @@ jobs:
           mkdir -p .build/ci-logs
           bash scripts/test-app-store-source-closure.sh 2>&1 | tee .build/ci-logs/app-store-source-closure-contract.log
 
-      - name: Build unsigned Store app
+      - name: Build unsigned Store archive
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p .build/ci-logs
           APP_STORE_UNSIGNED=1 \
+            APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive \
             bash scripts/build-app-store.sh release no-open 2>&1 | tee .build/ci-logs/app-store-build.log
 
       - name: Verify unsigned Store bundle statically

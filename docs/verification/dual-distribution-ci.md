@@ -71,22 +71,29 @@ Round-one review fixtures additionally require:
 ### Pull requests
 
 `pr-checks.yml` is triggered only by `pull_request`. Both `direct` and `store`
-jobs use GitHub-hosted `macos-26`, check out
-`github.event.pull_request.merge_commit_sha`, and assert that checkout `HEAD`,
-`GITHUB_SHA`, and the merge SHA are the same lowercase 40-character commit.
+jobs use GitHub-hosted `macos-26`, check out `github.sha` at the PR merge
+commit, and assert that checkout `HEAD`, `GITHUB_SHA`, and the frozen merge SHA
+are the same lowercase 40-character commit. The workflow-level SHA expression
+is captured in `PR_MERGE_SHA`; a direct run showed the nested
+`pull_request.merge_commit_sha` context was empty there even though checkout
+received the correct merge commit.
 The workflow has only `actions: read` and `contents: read`; it has no secrets,
 repository variables, environment approval, path filter, or job-level `if`.
 Concurrency cancels obsolete runs for the same pull request, and both job
 timeouts are finite.
 
 The Direct job runs `bash scripts/verify-local.sh full`. The Store job runs the
-project, bundle, and source-closure negative fixtures; builds unsigned with
-`APP_STORE_UNSIGNED=1 bash scripts/build-app-store.sh release no-open`; runs
+project, bundle, and source-closure negative fixtures; builds an unsigned
+archive with
+`APP_STORE_UNSIGNED=1 APP_STORE_ARCHIVE_PATH=.build/app-store/StatusTrio.xcarchive bash scripts/build-app-store.sh release no-open`;
+runs
 `bash scripts/verify-app-store-bundle.sh dist/AppStore/StatusTrio.app
 --unsigned`; and requires
 `python3 scripts/verify-app-store-source-closure.py
 .build/app-store/source-membership.json`. That last path is a mandatory
-interface, not an `if exists` optional. The Store job runs the
+interface, not an `if exists` optional. The archive path is mandatory because
+the same job verifies archived dSYMs against the actual app/Core frameworks.
+The Store job runs the
 `scripts/test-app-store-source-closure.sh` negative fixtures before the real
 audit.
 
