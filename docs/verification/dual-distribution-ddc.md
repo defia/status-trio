@@ -74,9 +74,10 @@ The only warning was an unrelated pre-existing `MemoryPressureMonitor.swift`
 
 ## Not verified
 
-- Store Xcode source-membership build: `NOT RUN` here; owned by the integration
-  task after canonical exclusions are assembled.
-- Full SwiftPM suite: `NOT RUN` for this focused DDC change.
+- Store Xcode source-membership build: PASS on the final integrated archive;
+  see `dual-distribution-store-build.md`.
+- Full SwiftPM suite: PASS on the final integrated tree; see
+  `2026-10-24-dual-distribution-final.md`.
 - Sandboxed Store runtime and private API behavior: `NOT RUN`.
 - Real DDC hardware, display compatibility, and hardware read-back: `NOT RUN`.
 
