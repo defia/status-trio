@@ -30,18 +30,24 @@ final class DDCVolumeIsolationTests: XCTestCase {
                 return coordinator
             }
         )
+        let observation = DDCVolumeStatusObservation()
+        observation.start(consuming: monitor.updates)
+        await fulfillment(of: [observation.attached], timeout: 2)
+        defer {
+            monitor.stop()
+            observation.stop()
+        }
+        let statusExpectation = observation.expect("DDC volume is confirmed") {
+            $0.scalar == 0.75
+        }
 
         monitor.start()
-        var updates = monitor.updates.makeAsyncIterator()
-        _ = await updates.next()
-        let status = await updates.next()
+        await fulfillment(of: [statusExpectation], timeout: 2)
 
         XCTAssertEqual(createdCoordinator?.selectedUID, output.uid)
-        XCTAssertEqual(status?.scalar, 0.75)
-        XCTAssertTrue(status?.canSetVolume == true)
-        XCTAssertFalse(status?.canMute == true)
-        XCTAssertEqual(status?.outputDevices.first?.volume, 0.75)
-        monitor.stop()
+        XCTAssertTrue(observation.latestStatus?.canSetVolume == true)
+        XCTAssertFalse(observation.latestStatus?.canMute == true)
+        XCTAssertEqual(observation.latestStatus?.outputDevices.first?.volume, 0.75)
     }
 
     func testUnavailableCoordinatorLeavesDDCVolumeUnavailable() async {
@@ -65,16 +71,21 @@ final class DDCVolumeIsolationTests: XCTestCase {
             eventMonitor: IsolationVolumeEvents(),
             ddcCoordinatorFactory: { _, _ in coordinator }
         )
+        let observation = DDCVolumeStatusObservation()
+        observation.start(consuming: monitor.updates)
+        await fulfillment(of: [observation.attached], timeout: 2)
+        defer {
+            monitor.stop()
+            observation.stop()
+        }
+        let statusExpectation = observation.expect("DDC volume stays unavailable") {
+            $0.scalar == nil && !$0.canSetVolume && !$0.canMute
+        }
 
         monitor.start()
-        var updates = monitor.updates.makeAsyncIterator()
-        let status = await updates.next()
+        await fulfillment(of: [statusExpectation], timeout: 2)
 
-        XCTAssertNil(status?.scalar)
-        XCTAssertFalse(status?.canSetVolume == true)
-        XCTAssertFalse(status?.canMute == true)
         XCTAssertNil(coordinator.setVolume(0.6))
-        monitor.stop()
     }
 
     func testDirectCompatibilityInitializerStillAcceptsInjectedTransport() async {
@@ -98,16 +109,22 @@ final class DDCVolumeIsolationTests: XCTestCase {
             eventMonitor: IsolationVolumeEvents(),
             ddcTransport: transport
         )
+        let observation = DDCVolumeStatusObservation()
+        observation.start(consuming: monitor.updates)
+        await fulfillment(of: [observation.attached], timeout: 2)
+        defer {
+            monitor.stop()
+            observation.stop()
+        }
+        let statusExpectation = observation.expect("direct DDC volume is confirmed") {
+            $0.scalar == 0.5
+        }
 
         monitor.start()
-        var updates = monitor.updates.makeAsyncIterator()
-        _ = await updates.next()
-        let status = await updates.next()
+        await fulfillment(of: [statusExpectation], timeout: 2)
 
         XCTAssertEqual(transport.resolveCount, 1)
-        XCTAssertEqual(status?.scalar, 0.5)
-        XCTAssertTrue(status?.canSetVolume == true)
-        monitor.stop()
+        XCTAssertTrue(observation.latestStatus?.canSetVolume == true)
     }
 
     func testDirectCoordinatorSatisfiesSharedProtocolBoundary() {
@@ -152,15 +169,21 @@ final class DDCVolumeIsolationTests: XCTestCase {
             eventMonitor: IsolationVolumeEvents(),
             ddcCoordinatorFactory: factory
         )
+        let observation = DDCVolumeStatusObservation()
+        observation.start(consuming: monitor.updates)
+        await fulfillment(of: [observation.attached], timeout: 2)
+        defer {
+            monitor.stop()
+            observation.stop()
+        }
+        let statusExpectation = observation.expect("factory DDC volume is confirmed") {
+            $0.scalar == 0.5
+        }
 
         monitor.start()
-        var updates = monitor.updates.makeAsyncIterator()
-        _ = await updates.next()
-        let status = await updates.next()
+        await fulfillment(of: [statusExpectation], timeout: 2)
 
         XCTAssertEqual(transport.resolveCount, 1)
-        XCTAssertEqual(status?.scalar, 0.5)
-        monitor.stop()
     }
 }
 
