@@ -261,6 +261,19 @@ ruby -e '
 ' "$fixture/pr-checks.yml"
 expect_failure "unsafe SDK fallback" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "toolchain selection is missing"
 
+fixture="$(make_fixture toolchain-direct-swift-path)"
+ruby -e '
+  ARGV.each do |path|
+    source = File.read(path)
+    source.sub!(
+      "DEVELOPER_DIR=\"${DEVELOPER_CANDIDATE}\" xcrun --sdk macosx swift --version",
+      "DEVELOPER_DIR=\"${DEVELOPER_CANDIDATE}\" \"${DEVELOPER_CANDIDATE}/usr/bin/swift\" --version"
+    ) or abort "xcrun Swift probe missing in #{path}"
+    File.write(path, source)
+  end
+' "$fixture/pr-checks.yml" "$fixture/app-store.yml"
+expect_failure "toolchain direct Swift path" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "must resolve Swift through xcrun"
+
 fixture="$(make_fixture store-bypassed)"
 ruby -e '
   path = ARGV[0]

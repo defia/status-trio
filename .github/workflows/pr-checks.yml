@@ -98,11 +98,13 @@ jobs:
 
             SDK_VERSION="$(DEVELOPER_DIR="${DEVELOPER_CANDIDATE}" xcrun --sdk macosx --show-sdk-version 2>/dev/null || true)"
             SDK_MAJOR="${SDK_VERSION%%.*}"
+            echo "Inspecting ${DEVELOPER_CANDIDATE}: macOS SDK '${SDK_VERSION}'."
             [[ "${SDK_MAJOR}" =~ ^[0-9]+$ ]] || continue
 
-            SWIFT_OUTPUT="$(DEVELOPER_DIR="${DEVELOPER_CANDIDATE}" "${DEVELOPER_CANDIDATE}/usr/bin/swift" --version 2>&1 || true)"
+            SWIFT_OUTPUT="$(DEVELOPER_DIR="${DEVELOPER_CANDIDATE}" xcrun --sdk macosx swift --version 2>&1 || true)"
             SWIFT_VERSION="$(printf '%s\n' "${SWIFT_OUTPUT}" | sed -n 's/.*Swift version \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
             SWIFT_MAJOR="${SWIFT_VERSION%%.*}"
+            echo "Inspecting ${DEVELOPER_CANDIDATE}: Swift '${SWIFT_VERSION}'."
             [[ "${SWIFT_MAJOR}" =~ ^[0-9]+$ ]] || continue
 
             if [[ "${SDK_MAJOR}" -ge 26 && "${SWIFT_MAJOR}" -ge 6 ]]; then
@@ -271,11 +273,13 @@ jobs:
 
             SDK_VERSION="$(DEVELOPER_DIR="${DEVELOPER_CANDIDATE}" xcrun --sdk macosx --show-sdk-version 2>/dev/null || true)"
             SDK_MAJOR="${SDK_VERSION%%.*}"
+            echo "Inspecting ${DEVELOPER_CANDIDATE}: macOS SDK '${SDK_VERSION}'."
             [[ "${SDK_MAJOR}" =~ ^[0-9]+$ ]] || continue
 
-            SWIFT_OUTPUT="$(DEVELOPER_DIR="${DEVELOPER_CANDIDATE}" "${DEVELOPER_CANDIDATE}/usr/bin/swift" --version 2>&1 || true)"
+            SWIFT_OUTPUT="$(DEVELOPER_DIR="${DEVELOPER_CANDIDATE}" xcrun --sdk macosx swift --version 2>&1 || true)"
             SWIFT_VERSION="$(printf '%s\n' "${SWIFT_OUTPUT}" | sed -n 's/.*Swift version \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
             SWIFT_MAJOR="${SWIFT_VERSION%%.*}"
+            echo "Inspecting ${DEVELOPER_CANDIDATE}: Swift '${SWIFT_VERSION}'."
             [[ "${SWIFT_MAJOR}" =~ ^[0-9]+$ ]] || continue
 
             if [[ "${SDK_MAJOR}" -ge 26 && "${SWIFT_MAJOR}" -ge 6 ]]; then

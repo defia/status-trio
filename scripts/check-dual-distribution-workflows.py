@@ -584,10 +584,14 @@ def check_checkout_sha_step(step: Step, workflow: Workflow, channel: str) -> Non
 
 def check_toolchain_step(step: Step, workflow: Workflow) -> None:
     run = scalar_text(step.get("run"))
+    if '"${DEVELOPER_CANDIDATE}/usr/bin/swift"' in run:
+        raise PolicyError(
+            f"{workflow.path}: toolchain selection must resolve Swift through xcrun"
+        )
     for required in (
         'for DEVELOPER_CANDIDATE in /Applications/Xcode*.app/Contents/Developer',
         'xcrun --sdk macosx --show-sdk-version',
-        'swift" --version',
+        'xcrun --sdk macosx swift --version',
         '"${SDK_MAJOR}" -ge 26',
         '"${SWIFT_MAJOR}" -ge 6',
         'echo "DEVELOPER_DIR=${SELECTED}"',
