@@ -448,6 +448,17 @@ ruby -e '
 ' "$fixture/pr-checks.yml"
 expect_failure "unpinned Homebrew XcodeGen" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "pinned XcodeGen install is missing"
 
+fixture="$(make_fixture xcodegen-tool-root-uncreated)"
+ruby -e '
+  ARGV.each do |path|
+    source = File.read(path)
+    source.sub!("          mkdir -p \"${TOOL_ROOT}\"\n          PREFIX=\"${TOOL_ROOT}\"", "          PREFIX=\"${TOOL_ROOT}\"") or
+      abort "XcodeGen tool root creation missing in #{path}"
+    File.write(path, source)
+  end
+' "$fixture/pr-checks.yml" "$fixture/app-store.yml"
+expect_failure "XcodeGen tool root not created" "$fixture/pr-checks.yml" "$fixture/app-store.yml" "pinned XcodeGen install is missing"
+
 fixture="$(make_fixture xcodegen-checksum)"
 ruby -e '
   path = ARGV[0]

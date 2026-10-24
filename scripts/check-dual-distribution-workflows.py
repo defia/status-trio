@@ -618,6 +618,7 @@ def check_xcodegen_install(step: Step, workflow: Workflow) -> None:
         '"${XCODEGEN_ARCHIVE_SHA256}"',
         'shasum -a 256 -c -',
         'unzip -q "${ARCHIVE}" -d "${EXTRACT}"',
+        'mkdir -p "${TOOL_ROOT}"',
         'PREFIX="${TOOL_ROOT}" bash "${EXTRACT}/xcodegen/install.sh"',
         runtime_capture,
         normalized_version,

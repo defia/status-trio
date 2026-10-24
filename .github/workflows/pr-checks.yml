@@ -151,6 +151,7 @@ jobs:
             echo "::error::Pinned XcodeGen archive did not contain xcodegen/install.sh."
             exit 1
           fi
+          mkdir -p "${TOOL_ROOT}"
           PREFIX="${TOOL_ROOT}" bash "${EXTRACT}/xcodegen/install.sh" 2>&1 | tee -a .build/ci-logs/xcodegen-install.log
           if [[ ! -x "${TOOL_ROOT}/bin/xcodegen" ]]; then
             echo "::error::Pinned XcodeGen was not installed at ${TOOL_ROOT}/bin/xcodegen."
@@ -326,6 +327,7 @@ jobs:
             echo "::error::Pinned XcodeGen archive did not contain xcodegen/install.sh."
             exit 1
           fi
+          mkdir -p "${TOOL_ROOT}"
           PREFIX="${TOOL_ROOT}" bash "${EXTRACT}/xcodegen/install.sh" 2>&1 | tee -a .build/ci-logs/xcodegen-install.log
           if [[ ! -x "${TOOL_ROOT}/bin/xcodegen" ]]; then
             echo "::error::Pinned XcodeGen was not installed at ${TOOL_ROOT}/bin/xcodegen."
