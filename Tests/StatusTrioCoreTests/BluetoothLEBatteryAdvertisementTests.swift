@@ -17,7 +17,8 @@ struct BluetoothLEBatteryAdvertisementTests {
             serviceUUIDs: [batteryService],
             manufacturerData: nil,
             name: nil,
-            batteryService: batteryService
+            batteryService: batteryService,
+            allowsAppleMobileDevices: true
         ))
     }
 
@@ -47,7 +48,8 @@ struct BluetoothLEBatteryAdvertisementTests {
                 serviceUUIDs: nil,
                 manufacturerData: appleManufacturerData(messageType: messageType),
                 name: "Ling's iPhone",
-                batteryService: batteryService
+                batteryService: batteryService,
+            allowsAppleMobileDevices: true
             ))
         }
     }
@@ -59,7 +61,8 @@ struct BluetoothLEBatteryAdvertisementTests {
                 serviceUUIDs: nil,
                 manufacturerData: appleManufacturerData(messageType: 0x10),
                 name: name,
-                batteryService: batteryService
+                batteryService: batteryService,
+            allowsAppleMobileDevices: true
             ))
         }
     }
@@ -72,7 +75,8 @@ struct BluetoothLEBatteryAdvertisementTests {
                 serviceUUIDs: nil,
                 manufacturerData: appleManufacturerData(messageType: messageType),
                 name: "AirPods",
-                batteryService: batteryService
+                batteryService: batteryService,
+            allowsAppleMobileDevices: true
             ))
         }
     }
@@ -82,7 +86,8 @@ struct BluetoothLEBatteryAdvertisementTests {
             serviceUUIDs: nil,
             manufacturerData: Data([0x06, 0x00, 0x10]),
             name: "Some Sensor",
-            batteryService: batteryService
+            batteryService: batteryService,
+            allowsAppleMobileDevices: true
         ))
     }
 
@@ -101,7 +106,8 @@ struct BluetoothLEBatteryAdvertisementTests {
                 serviceUUIDs: nil,
                 manufacturerData: payload,
                 name: "Ling's iPhone",
-                batteryService: batteryService
+                batteryService: batteryService,
+            allowsAppleMobileDevices: true
             ))
         }
     }
@@ -116,12 +122,34 @@ struct BluetoothLEBatteryAdvertisementTests {
         #expect(BluetoothLEBatteryAdvertisement.isAppleMobileDevice(manufacturerData: slice))
     }
 
+    /// The switch that gates reading a phone over the air gates the Continuity
+    /// route with it. A device that advertises the Battery Service is still a
+    /// candidate — it answers without asking the user anything.
+    @Test func appleMobileRouteIsGatedByTheUserSwitch() {
+        let phone = appleManufacturerData(messageType: 0x10)
+        #expect(!BluetoothLEBatteryAdvertisement.isCandidate(
+            serviceUUIDs: nil,
+            manufacturerData: phone,
+            name: "Ling's iPhone",
+            batteryService: batteryService,
+            allowsAppleMobileDevices: false
+        ))
+        #expect(BluetoothLEBatteryAdvertisement.isCandidate(
+            serviceUUIDs: [batteryService],
+            manufacturerData: nil,
+            name: "MX Keys",
+            batteryService: batteryService,
+            allowsAppleMobileDevices: false
+        ))
+    }
+
     @Test func deviceInformationAloneIsNotACandidate() {
         #expect(!BluetoothLEBatteryAdvertisement.isCandidate(
             serviceUUIDs: [CBUUID(string: "180A")],
             manufacturerData: nil,
             name: "MX Keys",
-            batteryService: batteryService
+            batteryService: batteryService,
+            allowsAppleMobileDevices: true
         ))
     }
 }

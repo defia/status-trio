@@ -58,6 +58,7 @@ final class SettingsStore: ObservableObject {
     static let showsMobileDeviceBatteryLevelsDefaultsKey = "showsMobileDeviceBatteryLevels"
     static let showsAppleDevicesAndBatteryDefaultsKey = "showsAppleDevicesAndBattery"
     static let refreshesAppleBatteriesInBackgroundDefaultsKey = "refreshesAppleBatteriesInBackground"
+    static let readsAppleDevicesOverBluetoothDefaultsKey = "readsAppleDevicesOverBluetooth"
     static let appleBatteryRefreshIntervalMinutesDefaultsKey = "appleBatteryRefreshIntervalMinutes"
     static let appleBatteryRefreshIntervalMinutesRange = 1...10
     static let defaultAppleBatteryRefreshIntervalMinutes = 1
@@ -519,6 +520,22 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 refreshesAppleBatteriesInBackground,
                 forKey: Self.refreshesAppleBatteriesInBackgroundDefaultsKey
+            )
+        }
+    }
+
+    /// Whether a nearby iPhone or iPad may be connected to over Bluetooth for
+    /// its battery.
+    ///
+    /// Off by default. An iOS device only answers a GATT read after it asks to
+    /// pair, and that prompt belongs to the phone: the app cannot accept or
+    /// remember it. Turning this on is the user agreeing to see the prompt; the
+    /// trusted USB/Wi-Fi route to the same battery is unaffected.
+    @Published var readsAppleDevicesOverBluetooth: Bool {
+        didSet {
+            defaults.set(
+                readsAppleDevicesOverBluetooth,
+                forKey: Self.readsAppleDevicesOverBluetoothDefaultsKey
             )
         }
     }
@@ -1348,6 +1365,9 @@ final class SettingsStore: ObservableObject {
         self.showsAppleDevicesAndBattery = appleMigration.isEnabled
         self.refreshesAppleBatteriesInBackground = defaults.object(
             forKey: Self.refreshesAppleBatteriesInBackgroundDefaultsKey
+        ) as? Bool ?? false
+        self.readsAppleDevicesOverBluetooth = defaults.object(
+            forKey: Self.readsAppleDevicesOverBluetoothDefaultsKey
         ) as? Bool ?? false
         self.appleBatteryRefreshIntervalMinutes = Self.clampedAppleBatteryRefreshInterval(
             (defaults.object(forKey: Self.appleBatteryRefreshIntervalMinutesDefaultsKey) as? NSNumber)?.intValue

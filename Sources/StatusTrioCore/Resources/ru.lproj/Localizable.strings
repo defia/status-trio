@@ -485,6 +485,8 @@
 "bluetooth.nearbyBLE.unavailable" = "Временно недоступно";
 "settings.appleDevicesAndBattery" = "Показывать устройства Apple и заряд";
 "settings.appleDevicesAndBattery.description" = "Доверенные и находящиеся рядом устройства Apple с именами отображаются в списке Bluetooth.";
+"settings.appleBluetoothRead" = "Читать заряд iPhone и iPad по Bluetooth";
+"settings.appleBluetoothRead.description" = "Подключается к находящемуся рядом iPhone или iPad, чтобы прочитать заряд. В первый раз устройство запросит сопряжение; при отказе чтение этого устройства прекращается.";
 "settings.appleBackgroundRefresh" = "Обновлять заряд Apple в фоновом режиме";
 "settings.appleBackgroundRefresh.description" = "Обновляет заряд выбранных устройств Apple, когда панель закрыта.";
 "settings.appleBackgroundRefresh.interval" = "Интервал фонового обновления заряда";

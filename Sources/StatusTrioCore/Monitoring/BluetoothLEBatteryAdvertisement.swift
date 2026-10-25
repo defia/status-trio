@@ -75,15 +75,24 @@ enum BluetoothLEBatteryAdvertisement {
     /// `name` is the name the system already knows for the peripheral, taken
     /// from the advertisement when it carries one and from CoreBluetooth's cache
     /// otherwise. An absent or blank one is what a stranger's device looks like.
+    ///
+    /// `allowsAppleMobileDevices` is the user's switch for reading a phone over
+    /// the air. An iOS device asks to pair before it answers a read — the prompt
+    /// is the device's own, not something the app can answer — so a user who has
+    /// not opted into that prompt must not reach the Continuity route at all.
+    /// The standard Battery Service route is unaffected: a keyboard or a mouse
+    /// advertises `180F` and answers without asking for anything.
     static func isCandidate(
         serviceUUIDs: [CBUUID]?,
         manufacturerData: Data?,
         name: String?,
-        batteryService: CBUUID
+        batteryService: CBUUID,
+        allowsAppleMobileDevices: Bool
     ) -> Bool {
         if advertisesBatteryService(serviceUUIDs, batteryService: batteryService) {
             return true
         }
+        guard allowsAppleMobileDevices else { return false }
         return isAppleMobileDevice(manufacturerData: manufacturerData)
     }
 }

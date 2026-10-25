@@ -485,6 +485,8 @@
 "bluetooth.nearbyBLE.unavailable" = "暫時無法讀取";
 "settings.appleDevicesAndBattery" = "顯示 Apple 裝置與電量";
 "settings.appleDevicesAndBattery.description" = "已信任的 Apple 裝置和附近有名稱的裝置會顯示在藍牙列表中。";
+"settings.appleBluetoothRead" = "透過藍牙讀取 iPhone、iPad 電量";
+"settings.appleBluetoothRead.description" = "連接附近的 iPhone、iPad 讀取電量。首次讀取時裝置會要求配對；拒絕後該裝置不再自動讀取。";
 "settings.appleBackgroundRefresh" = "在背景更新 Apple 裝置電量";
 "settings.appleBackgroundRefresh.description" = "狀態面板關閉時，繼續更新已選 Apple 裝置的電量。";
 "settings.appleBackgroundRefresh.interval" = "背景更新電量的時間間隔";

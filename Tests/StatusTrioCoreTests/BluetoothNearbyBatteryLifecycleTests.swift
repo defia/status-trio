@@ -328,6 +328,11 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.refreshFromUser()
 
         XCTAssertEqual(scanner.refreshCount, 1)
+        XCTAssertEqual(
+            scanner.resumeSuspendedReadsCount,
+            1,
+            "a refresh re-arms the devices automatic retries gave up on"
+        )
         XCTAssertGreaterThanOrEqual(worker.readCount, 1)
         controller.deactivate()
     }
@@ -432,6 +437,11 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
     private(set) var startCount = 0
     private(set) var refreshCount = 0
     private(set) var stopCount = 0
+    private(set) var resumeSuspendedReadsCount = 0
+
+    func resumeSuspendedReads() {
+        resumeSuspendedReadsCount += 1
+    }
 
     func setAllowedReadDeviceIDs(_ ids: Set<UUID>) -> [UUID: DeviceOperationToken] {
         allowedReadDeviceIDs = ids

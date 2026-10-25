@@ -485,6 +485,8 @@
 "bluetooth.nearbyBLE.unavailable" = "Temporairement indisponible";
 "settings.appleDevicesAndBattery" = "Afficher les appareils Apple et leur batterie";
 "settings.appleDevicesAndBattery.description" = "Les appareils Apple de confiance et nommés à proximité apparaissent dans la liste Bluetooth.";
+"settings.appleBluetoothRead" = "Lire la batterie des iPhone et iPad en Bluetooth";
+"settings.appleBluetoothRead.description" = "Se connecte à un iPhone ou iPad à proximité pour lire sa batterie. L’appareil demande un appairage la première fois ; un refus arrête la lecture de cet appareil.";
 "settings.appleBackgroundRefresh" = "Actualiser les batteries Apple en arrière-plan";
 "settings.appleBackgroundRefresh.description" = "Actualise la batterie des appareils Apple sélectionnés lorsque le panneau est fermé.";
 "settings.appleBackgroundRefresh.interval" = "Intervalle d’actualisation des batteries en arrière-plan";

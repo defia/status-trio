@@ -485,6 +485,8 @@
 "bluetooth.nearbyBLE.unavailable" = "暂时无法读取";
 "settings.appleDevicesAndBattery" = "显示苹果设备与电量";
 "settings.appleDevicesAndBattery.description" = "已信任的 Apple 设备和附近有名称的设备会显示在蓝牙列表中。";
+"settings.appleBluetoothRead" = "通过蓝牙读取 iPhone、iPad 电量";
+"settings.appleBluetoothRead.description" = "连接附近的 iPhone、iPad 读取电量。首次读取时设备会请求配对；拒绝后该设备不再自动读取。";
 "settings.appleBackgroundRefresh" = "在后台更新 Apple 设备电量";
 "settings.appleBackgroundRefresh.description" = "状态面板关闭时，继续更新已选 Apple 设备的电量。";
 "settings.appleBackgroundRefresh.interval" = "后台更新电量的时间间隔";

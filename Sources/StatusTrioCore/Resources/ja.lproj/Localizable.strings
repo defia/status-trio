@@ -485,6 +485,8 @@
 "bluetooth.nearbyBLE.unavailable" = "一時的に利用できません";
 "settings.appleDevicesAndBattery" = "Appleデバイスとバッテリーを表示";
 "settings.appleDevicesAndBattery.description" = "信頼済みの Apple デバイスと近くの名前付きデバイスを Bluetooth リストに表示します。";
+"settings.appleBluetoothRead" = "iPhone・iPad のバッテリーを Bluetooth で読み取る";
+"settings.appleBluetoothRead.description" = "近くの iPhone や iPad に接続して電池残量を読み取ります。初回はペアリングを求められ、拒否するとそのデバイスの読み取りは停止します。";
 "settings.appleBackgroundRefresh" = "Apple デバイスのバッテリーをバックグラウンドで更新";
 "settings.appleBackgroundRefresh.description" = "ステータスパネルを閉じている間も、選択した Apple デバイスの電池残量を更新します。";
 "settings.appleBackgroundRefresh.interval" = "バックグラウンドでのバッテリー残量更新間隔";
