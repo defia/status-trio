@@ -313,6 +313,27 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         await waitUntil { scanner.stopCount == 1 }
     }
 
+    /// The BLE route matches a phone's name against the paired-device report,
+    /// so the scanner has to learn the names the report carries. No typing.
+    func testKnownAppleNamesFollowTheSystemDeviceList() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let worker = NearbyBatteryPairedReaderSpy(devices: [
+            BluetoothDevice(
+                id: "AA:BB:CC:DD:EE:FF",
+                name: "Ling's iPhone",
+                kind: .mobile(.phone),
+                isConnected: false
+            )
+        ])
+        let controller = makeController(scanner: scanner, monitor: monitor, worker: worker)
+        controller.activate()
+        monitor.emit(authorization: .allowed, state: .poweredOn)
+
+        await waitUntil { scanner.knownAppleDeviceNames == ["Ling's iPhone"] }
+        controller.deactivate()
+    }
+
     func testManualRefreshUsesNearbyScannerSeparately() {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
@@ -438,9 +459,14 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
     private(set) var refreshCount = 0
     private(set) var stopCount = 0
     private(set) var resumeSuspendedReadsCount = 0
+    private(set) var knownAppleDeviceNames: Set<String> = []
 
     func resumeSuspendedReads() {
         resumeSuspendedReadsCount += 1
+    }
+
+    func setKnownAppleMobileDeviceNames(_ names: Set<String>) {
+        knownAppleDeviceNames = names
     }
 
     func setAllowedReadDeviceIDs(_ ids: Set<UUID>) -> [UUID: DeviceOperationToken] {
@@ -507,12 +533,17 @@ private final class NearbyBatteryStateMonitorSpy: BluetoothStateMonitoring {
 private final class NearbyBatteryPairedReaderSpy: BluetoothPairedDeviceReading {
     private let lock = NSLock()
     private var storedReadCount = 0
+    private let devices: [BluetoothDevice]
+
+    init(devices: [BluetoothDevice] = []) {
+        self.devices = devices
+    }
 
     var readCount: Int { lock.withLock { storedReadCount } }
 
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
         lock.withLock { storedReadCount += 1 }
-        completion(.success([]))
+        completion(.success(devices))
     }
 }
 

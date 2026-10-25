@@ -82,35 +82,50 @@ enum BluetoothLEBatteryAdvertisement {
     /// not opted into that prompt must not reach the Continuity route at all.
     /// The standard Battery Service route is unaffected: a keyboard or a mouse
     /// advertises `180F` and answers without asking for anything.
+    ///
+    /// `knownAppleMobileNames` is the system's own device list — the names
+    /// `system_profiler SPBluetoothDataType` reports for this Mac. The
+    /// Continuity route requires a match: every iPhone in radio range broadcasts
+    /// the same payload, and the prompt one raises carries its own name
+    /// ("iPhone"), so the payload alone would connect a stranger's phone and
+    /// raise a prompt the user could neither answer nor identify (issue `#152`).
+    /// Matching against the system list keeps the route on devices this Mac
+    /// already has a record for, and needs no typing from the user.
     static func isCandidate(
         serviceUUIDs: [CBUUID]?,
         manufacturerData: Data?,
         name: String?,
         batteryService: CBUUID,
-        allowsAppleMobileDevices: Bool
+        allowsAppleMobileDevices: Bool,
+        knownAppleMobileNames: Set<String>
     ) -> Bool {
         if advertisesBatteryService(serviceUUIDs, batteryService: batteryService) {
             return true
         }
         guard allowsAppleMobileDevices else { return false }
         guard isAppleMobileDevice(manufacturerData: manufacturerData) else { return false }
-        return isKnownAppleMobileDevice(name: name)
+        return matchesKnownAppleMobileName(name, knownNames: knownAppleMobileNames)
     }
 
-    /// Whether the Apple payload came from a device this Mac already knows.
+    /// Whether a discovered name matches one the system list carries.
     ///
-    /// The Continuity route needs a condition the service route does not: a
-    /// name. Every iPhone in radio range broadcasts the payload, and the pairing
-    /// prompt the device raises shows the phone's own name — "iPhone", not
-    /// whatever the user calls it. Connecting on the payload alone therefore
-    /// connected a stranger's phone and raised a prompt the user could neither
-    /// answer nor identify (issue `#152`).
-    ///
-    /// CoreBluetooth only reports a name for a peripheral the system already
-    /// knows — one this Mac paired with or has connected to before — so the name
-    /// is what keeps this route on the user's own devices. It filters on
-    /// identity: macOS withholds the name from a stranger, not the battery.
-    static func isKnownAppleMobileDevice(name: String?) -> Bool {
-        !(name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    /// The comparison folds case and whitespace because the two sides come from
+    /// different layers — the advertisement carries the phone's GAP name, the
+    /// system list carries the record macOS stores — and they can disagree on
+    /// nothing more than that. A blank name never matches anything: it is what a
+    /// device this Mac has no record of looks like.
+    static func matchesKnownAppleMobileName(_ name: String?, knownNames: Set<String>) -> Bool {
+        let candidate = normalizedAppleMobileName(name)
+        guard !candidate.isEmpty else { return false }
+        return knownNames.contains { normalizedAppleMobileName($0) == candidate }
+    }
+
+    static func normalizedAppleMobileName(_ name: String?) -> String {
+        (name ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(
+                options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+                locale: Locale(identifier: "en_US_POSIX")
+            )
     }
 }

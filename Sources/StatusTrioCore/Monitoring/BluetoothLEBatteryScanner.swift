@@ -217,6 +217,9 @@ protocol BluetoothLEBatteryScanning: AnyObject {
     /// default: the device answers only after a pairing prompt, which the app
     /// must not trigger without the user asking for it.
     func setAppleMobileBatteryReadsEnabled(_ enabled: Bool)
+    /// The device names the system lists for this Mac. An Apple phone is only
+    /// read when its advertised name matches one of them.
+    func setKnownAppleMobileDeviceNames(_ names: Set<String>)
     func start()
     func refresh()
     /// Puts the devices automatic retries gave up on back in rotation. Reached
@@ -245,6 +248,7 @@ extension BluetoothLEBatteryScanning {
     func revokeReadDeviceIDs(_ ids: Set<UUID>) { _ = ids }
     func setBackgroundRefreshInterval(_ interval: Duration?) { _ = interval }
     func setAppleMobileBatteryReadsEnabled(_ enabled: Bool) { _ = enabled }
+    func setKnownAppleMobileDeviceNames(_ names: Set<String>) { _ = names }
     func resumeSuspendedReads() {}
 }
 
@@ -357,6 +361,7 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
     private var currentScanGeneration: UInt64 = 0
     private var backgroundRefreshInterval: Duration?
     private var appleMobileReadsEnabled = false
+    private var knownAppleMobileNames: Set<String> = []
 
     deinit {
         scanWindowTask?.cancel()
@@ -508,6 +513,10 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         if isRunning { scheduleAutomaticRefresh() }
     }
 
+    func setKnownAppleMobileDeviceNames(_ names: Set<String>) {
+        knownAppleMobileNames = names
+    }
+
     func setAppleMobileBatteryReadsEnabled(_ enabled: Bool) {
         guard appleMobileReadsEnabled != enabled else { return }
         appleMobileReadsEnabled = enabled
@@ -564,14 +573,20 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
     ) {
         guard central === centralManager else { return }
         let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        // The identity check reads the name the system caches for the
+        // peripheral first: that is the spelling the paired-device report
+        // carries, so it is the one the known-name list can match. The advertised
+        // local name is the fallback.
+        let identityName = peripheral.name ?? advertisedName
         guard isRunning,
               isScanning,
               BluetoothLEBatteryAdvertisement.isCandidate(
                   serviceUUIDs: advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID],
                   manufacturerData: advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
-                  name: advertisedName ?? peripheral.name,
+                  name: identityName,
                   batteryService: Self.batteryServiceUUID,
-                  allowsAppleMobileDevices: appleMobileReadsEnabled
+                  allowsAppleMobileDevices: appleMobileReadsEnabled,
+                  knownAppleMobileNames: knownAppleMobileNames
               ),
               policy.acceptsCallback(from: currentScanGeneration) else {
             return

@@ -424,6 +424,20 @@ final class BluetoothDeviceController: ObservableObject {
     private var nearbyBLEDiscoveryRequests: Set<String> = []
     private var nearbyBLEListVisible = true
     private var nearbyBLEAppleMobileReadsEnabled = false
+
+    /// The names the system lists for this Mac, as the paired-device report
+    /// reports them. A phone is only read over BLE when its name matches one of
+    /// these; a stranger's phone broadcasts the same payload but is not listed.
+    private var knownNearbyAppleDeviceNames: Set<String> {
+        Set(devices.map(\.name).filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        })
+    }
+
+    private func updateKnownNearbyAppleNames() {
+        nearbyBatteryScanner?.setKnownAppleMobileDeviceNames(knownNearbyAppleDeviceNames)
+    }
+
     private var nearbyBLEBackgroundRefreshEnabled = false
     private var nearbyBLEBackgroundSelectedIDs: Set<UUID> = []
     private var nearbyBLEBackgroundRefreshInterval: Duration?
@@ -709,6 +723,9 @@ final class BluetoothDeviceController: ObservableObject {
                         self.appleBluetoothAudioDiagnosticReporter.report($0)
                     }
                     self.devices = devices
+                    // The BLE route matches a phone's advertised name against
+                    // this list, so it has to follow the report as it lands.
+                    self.updateKnownNearbyAppleNames()
                     self.reconcileDeviceActions()
                     self.availability = .available
                     self.refreshBatteryLevels()
@@ -814,6 +831,7 @@ final class BluetoothDeviceController: ObservableObject {
         nearbyPersistedSelections = persistedSelections
         nearbyBLEAppleMobileReadsEnabled = appleMobileReadsEnabled
         nearbyBatteryScanner?.setAppleMobileBatteryReadsEnabled(appleMobileReadsEnabled)
+        updateKnownNearbyAppleNames()
         let newlyHidden = hiddenIDs.subtracting(oldHiddenIDs)
         if !newlyHidden.isEmpty { nearbyBatteryScanner?.revokeReadDeviceIDs(newlyHidden) }
         nearbyBatteryDevices.removeAll { hiddenIDs.contains($0.id) }

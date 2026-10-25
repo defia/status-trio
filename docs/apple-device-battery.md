@@ -27,12 +27,17 @@ and no GATT session is opened, so no prompt can appear. A device that
 advertises the standard Battery Service is still read: a keyboard or a mouse
 answers without asking anything.
 
-Even with the switch on, the Continuity route also requires a name CoreBluetooth
-reports for the peripheral, which the system only supplies for a device this Mac
-already knows. Every iPhone in range broadcasts the same payload, and the prompt
-the phone raises carries the phone's own name — literally "iPhone" — so a
-payload-only match connected a stranger's phone and asked the user to approve a
-pairing they could not identify. The name filters on identity, not capability.
+Even with the switch on, the Continuity route requires the device's name to match
+one the system lists for this Mac — the names `system_profiler
+SPBluetoothDataType` reports, which the app already reads for the paired-device
+rows. Every iPhone in range broadcasts the same payload, and the prompt the phone
+raises carries the phone's own name — literally "iPhone" — so a payload-only
+match connected a stranger's phone and asked the user to approve a pairing they
+could not identify (issue #152). Matching the system's own list keeps the route
+on devices this Mac already has a record for, and needs no typing from the user.
+The comparison folds case and surrounding whitespace; a name with no record
+never matches. Listing a discovered name in the picker is passive and does not
+require that record.
 
 With the switch on, a session that ends without a reading is not retried on a
 fixed one-minute cadence. The first consecutive failure waits one minute, the
