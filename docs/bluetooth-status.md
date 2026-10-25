@@ -396,7 +396,9 @@ a row actually intersecting the visible popover viewport. Closing, hiding,
 folding, or scrolling a row out of view revokes its permit. The switch is off
 by default because a phone answers only after it asks to pair, and that prompt
 is the phone's own; with it off a phone advertisement is not a candidate at
-all. Consecutive failed sessions back off one minute and then five, and the
+all. With it on, a phone is still only read when CoreBluetooth reports a name
+for it, which the system does for this Mac's known devices — a stranger's phone
+in range broadcasts the same payload but no name, and is not connected. Consecutive failed sessions back off one minute and then five, and the
 third suspends that UUID for the rest of the app run until the user refreshes.
 Scanner sessions are limited to two concurrent connections, an eight-second
 deadline, and a per-device cooldown. A BLE row without a battery value, including

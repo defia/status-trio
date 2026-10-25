@@ -54,10 +54,12 @@ struct BluetoothLEBatteryAdvertisementTests {
         }
     }
 
-    /// Names are for display only; an empty name cannot suppress discovery.
-    @Test func unnamedAppleBroadcastsRemainCandidates() {
+    /// A stranger's phone broadcasts the same payload, and the prompt it would
+    /// raise shows its own name — "iPhone", not the user's name for it. The
+    /// missing name is what keeps the route on this Mac's own devices.
+    @Test func unnamedAppleBroadcastsAreNotCandidates() {
         for name: String? in [nil, "", "   ", "\n"] {
-            #expect(BluetoothLEBatteryAdvertisement.isCandidate(
+            #expect(!BluetoothLEBatteryAdvertisement.isCandidate(
                 serviceUUIDs: nil,
                 manufacturerData: appleManufacturerData(messageType: 0x10),
                 name: name,
@@ -65,6 +67,18 @@ struct BluetoothLEBatteryAdvertisementTests {
             allowsAppleMobileDevices: true
             ))
         }
+    }
+
+    /// The service route does not need a name: a keyboard or a mouse reaches the
+    /// scanner with whatever the advertisement carried.
+    @Test func unnamedBatteryServiceDeviceStaysACandidate() {
+        #expect(BluetoothLEBatteryAdvertisement.isCandidate(
+            serviceUUIDs: [batteryService],
+            manufacturerData: nil,
+            name: nil,
+            batteryService: batteryService,
+            allowsAppleMobileDevices: true
+        ))
     }
 
     /// AirPods send their own Continuity message types, and their battery is

@@ -93,6 +93,24 @@ enum BluetoothLEBatteryAdvertisement {
             return true
         }
         guard allowsAppleMobileDevices else { return false }
-        return isAppleMobileDevice(manufacturerData: manufacturerData)
+        guard isAppleMobileDevice(manufacturerData: manufacturerData) else { return false }
+        return isKnownAppleMobileDevice(name: name)
+    }
+
+    /// Whether the Apple payload came from a device this Mac already knows.
+    ///
+    /// The Continuity route needs a condition the service route does not: a
+    /// name. Every iPhone in radio range broadcasts the payload, and the pairing
+    /// prompt the device raises shows the phone's own name — "iPhone", not
+    /// whatever the user calls it. Connecting on the payload alone therefore
+    /// connected a stranger's phone and raised a prompt the user could neither
+    /// answer nor identify (issue `#152`).
+    ///
+    /// CoreBluetooth only reports a name for a peripheral the system already
+    /// knows — one this Mac paired with or has connected to before — so the name
+    /// is what keeps this route on the user's own devices. It filters on
+    /// identity: macOS withholds the name from a stranger, not the battery.
+    static func isKnownAppleMobileDevice(name: String?) -> Bool {
+        !(name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
