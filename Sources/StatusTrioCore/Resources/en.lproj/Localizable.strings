@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Not nearby";
 "bluetooth.nearbyBLE.unavailable" = "Temporarily unavailable";
 "settings.appleDevicesAndBattery" = "Show Apple devices and battery";
+"settings.appleTrustHelp" = "For iPhone and iPad, connect once with a cable, unlock the device, and tap Trust. Wireless readings also need Wi-Fi sync with this Mac. Apple Watch is read through its trusted paired iPhone.";
+"settings.appleBluetoothReadHelp" = "A Bluetooth reading can make the phone ask to pair. Declining pauses that device; the panel's refresh button retries.";
 "settings.appleDevicesAndBattery.description" = "Shows trusted Apple devices and nearby named Apple Bluetooth devices in the Bluetooth list.";
 "settings.appleBluetoothRead" = "Read iPhone and iPad battery over Bluetooth";
 "settings.appleBluetoothRead.description" = "Connects to a nearby iPhone or iPad to read its battery. The device asks to pair the first time; declining stops the read for that device.";

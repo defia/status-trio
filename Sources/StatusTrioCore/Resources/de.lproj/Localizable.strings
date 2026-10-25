@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Nicht in der Nähe";
 "bluetooth.nearbyBLE.unavailable" = "Vorübergehend nicht verfügbar";
 "settings.appleDevicesAndBattery" = "Apple-Geräte und Batteriestand anzeigen";
+"settings.appleTrustHelp" = "iPhone und iPad müssen einmal per Kabel verbunden, entsperrt und „Vertrauen“ bestätigt werden. Drahtloses Lesen braucht zusätzlich die WLAN-Synchronisierung im selben Netzwerk. Die Apple Watch wird über das vertraute iPhone gelesen.";
+"settings.appleBluetoothReadHelp" = "Beim Lesen über Bluetooth kann das Gerät eine Kopplung anfordern. Wird sie abgelehnt, pausiert das Gerät; die Aktualisieren-Schaltfläche im Panel versucht es erneut.";
 "settings.appleDevicesAndBattery.description" = "Vertrauenswürdige und benannte Apple-Geräte in der Nähe erscheinen in der Bluetooth-Liste.";
 "settings.appleBluetoothRead" = "iPhone- und iPad-Akku über Bluetooth lesen";
 "settings.appleBluetoothRead.description" = "Liest den Akkustand eines iPhone oder iPad in der Nähe. Beim ersten Mal fragt das Gerät nach einer Kopplung; wird sie abgelehnt, wird das Gerät nicht weiter gelesen.";

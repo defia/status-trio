@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "근처에 없음";
 "bluetooth.nearbyBLE.unavailable" = "일시적으로 사용할 수 없음";
 "settings.appleDevicesAndBattery" = "Apple 기기 및 배터리 표시";
+"settings.appleTrustHelp" = "iPhone/iPad은 처음 한 번 케이블로 Mac에 연결해 잠금을 해제하고 '신뢰'를 눌러야 합니다. 무선 읽기는 같은 네트워크의 Wi‑Fi 동기화도 필요합니다. Apple Watch는 신뢰한 iPhone을 통해 읽습니다.";
+"settings.appleBluetoothReadHelp" = "Bluetooth로 읽을 때 기기가 페어링을 요청할 수 있습니다. 거부하면 해당 기기 읽기가 일시 중지되며, 패널의 새로 고침 버튼으로 다시 시도할 수 있습니다.";
 "settings.appleDevicesAndBattery.description" = "신뢰된 Apple 기기와 이름이 있는 주변 기기를 Bluetooth 목록에 표시합니다.";
 "settings.appleBluetoothRead" = "Bluetooth로 iPhone·iPad 배터리 읽기";
 "settings.appleBluetoothRead.description" = "근처의 iPhone 또는 iPad에 연결해 배터리를 읽습니다. 처음에는 페어링을 요청하며, 거부하면 해당 기기의 읽기를 중단합니다.";

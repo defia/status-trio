@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "目前不在附近";
 "bluetooth.nearbyBLE.unavailable" = "暫時無法讀取";
 "settings.appleDevicesAndBattery" = "顯示 Apple 裝置與電量";
+"settings.appleTrustHelp" = "iPhone、iPad 首次需用連接線連接 Mac、解鎖並點按「信任」；無線讀取還需與 Mac 處於同一區域網路。Apple Watch 透過已信任的 iPhone 讀取。";
+"settings.appleBluetoothReadHelp" = "透過藍牙讀取時，裝置可能跳出配對要求；取消後該裝置會暫停讀取，點面板的重新整理按鈕可再試。";
 "settings.appleDevicesAndBattery.description" = "已信任的 Apple 裝置和附近有名稱的裝置會顯示在藍牙列表中。";
 "settings.appleBluetoothRead" = "透過藍牙讀取 iPhone、iPad 電量";
 "settings.appleBluetoothRead.description" = "連接附近的 iPhone、iPad 讀取電量。首次讀取時裝置會要求配對；拒絕後該裝置不再自動讀取。";

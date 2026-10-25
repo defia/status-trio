@@ -164,6 +164,8 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothBatteryLevelsDescription = "settings.bluetooth.batteryLevelsDescription"
     case settingsAppleDevicesAndBattery = "settings.appleDevicesAndBattery"
     case settingsAppleDevicesAndBatteryDescription = "settings.appleDevicesAndBattery.description"
+    case settingsAppleTrustHelp = "settings.appleTrustHelp"
+    case settingsAppleBluetoothReadHelp = "settings.appleBluetoothReadHelp"
     case settingsAppleBluetoothRead = "settings.appleBluetoothRead"
     case settingsAppleBluetoothReadDescription = "settings.appleBluetoothRead.description"
     case settingsAppleBackgroundRefresh = "settings.appleBackgroundRefresh"

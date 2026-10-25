@@ -165,6 +165,17 @@ struct BluetoothSectionView: View {
                         isOn: $store.readsAppleDevicesOverBluetooth
                     )
 
+                    if store.readsAppleDevicesOverBluetooth {
+                        SettingsDivider()
+                        SettingsHintRow(
+                            text: localization.string(.settingsAppleBluetoothReadHelp)
+                        )
+                    }
+
+                    SettingsDivider()
+
+                    SettingsHintRow(text: localization.string(.settingsAppleTrustHelp))
+
                     SettingsDivider()
 
                     SettingsToggleRow(

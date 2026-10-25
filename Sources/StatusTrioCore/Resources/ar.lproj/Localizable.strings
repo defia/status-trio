@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "غير قريب";
 "bluetooth.nearbyBLE.unavailable" = "غير متاح مؤقتًا";
 "settings.appleDevicesAndBattery" = "إظهار أجهزة Apple والبطارية";
+"settings.appleTrustHelp" = "يجب توصيل iPhone وiPad مرة واحدة بالكابل، وفك القفل، ثم الضغط على «الثقة». وتتطلب القراءة اللاسلكية أيضًا مزامنة Wi‑Fi على الشبكة نفسها. تُقرأ Apple Watch عبر iPhone الموثوق.";
+"settings.appleBluetoothReadHelp" = "قد تطلب القراءة عبر Bluetooth الاقتران. عند الرفض يتوقف قراءة ذلك الجهاز مؤقتًا، ويمكن إعادة المحاولة بزر التحديث في اللوحة.";
 "settings.appleDevicesAndBattery.description" = "تظهر أجهزة Apple الموثوقة والقريبة ذات الأسماء في قائمة Bluetooth.";
 "settings.appleBluetoothRead" = "قراءة بطارية iPhone وiPad عبر Bluetooth";
 "settings.appleBluetoothRead.description" = "يتصل بـ iPhone أو iPad قريب لقراءة البطارية. يطلب الجهاز الاقتران في المرة الأولى؛ وإذا رُفض يتوقف قراءة ذلك الجهاز.";

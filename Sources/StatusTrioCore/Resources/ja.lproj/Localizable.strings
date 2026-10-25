@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "近くにありません";
 "bluetooth.nearbyBLE.unavailable" = "一時的に利用できません";
 "settings.appleDevicesAndBattery" = "Appleデバイスとバッテリーを表示";
+"settings.appleTrustHelp" = "iPhone / iPad は初回のみケーブルで Mac に接続し、ロック解除して「信頼」をタップしてください。ワイヤレス読み取りには同じネットワーク上での Wi‑Fi 同期も必要です。Apple Watch は信頼済みの iPhone 経由で読み取ります。";
+"settings.appleBluetoothReadHelp" = "Bluetooth で読み取る際、デバイスがペアリングを求めることがあります。拒否するとそのデバイスの読み取りは一時停止し、パネルの更新ボタンで再試行できます。";
 "settings.appleDevicesAndBattery.description" = "信頼済みの Apple デバイスと近くの名前付きデバイスを Bluetooth リストに表示します。";
 "settings.appleBluetoothRead" = "iPhone・iPad のバッテリーを Bluetooth で読み取る";
 "settings.appleBluetoothRead.description" = "近くの iPhone や iPad に接続して電池残量を読み取ります。初回はペアリングを求められ、拒否するとそのデバイスの読み取りは停止します。";

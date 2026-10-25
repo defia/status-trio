@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Не поблизости";
 "bluetooth.nearbyBLE.unavailable" = "Временно недоступно";
 "settings.appleDevicesAndBattery" = "Показывать устройства Apple и заряд";
+"settings.appleTrustHelp" = "iPhone и iPad нужно один раз подключить кабелем, разблокировать и нажать «Доверять». Для беспроводного чтения также нужна синхронизация по Wi‑Fi в той же сети. Apple Watch читается через доверенный iPhone.";
+"settings.appleBluetoothReadHelp" = "При чтении по Bluetooth устройство может запросить сопряжение. При отказе чтение этого устройства приостанавливается; кнопка обновления на панели повторит попытку.";
 "settings.appleDevicesAndBattery.description" = "Доверенные и находящиеся рядом устройства Apple с именами отображаются в списке Bluetooth.";
 "settings.appleBluetoothRead" = "Читать заряд iPhone и iPad по Bluetooth";
 "settings.appleBluetoothRead.description" = "Подключается к находящемуся рядом iPhone или iPad, чтобы прочитать заряд. В первый раз устройство запросит сопряжение; при отказе чтение этого устройства прекращается.";

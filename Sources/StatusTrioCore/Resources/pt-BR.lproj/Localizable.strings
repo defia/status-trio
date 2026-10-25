@@ -484,6 +484,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Não está próximo";
 "bluetooth.nearbyBLE.unavailable" = "Temporariamente indisponível";
 "settings.appleDevicesAndBattery" = "Mostrar dispositivos Apple e bateria";
+"settings.appleTrustHelp" = "O iPhone e o iPad precisam ser conectados uma vez por cabo, desbloqueados e tocar em “Confiar”. A leitura sem fio também exige sincronização por Wi‑Fi na mesma rede. O Apple Watch é lido pelo iPhone confiável.";
+"settings.appleBluetoothReadHelp" = "Uma leitura por Bluetooth pode pedir emparelhamento. Se recusado, o aparelho fica em pausa; o botão de atualizar do painel tenta de novo.";
 "settings.appleDevicesAndBattery.description" = "Dispositivos Apple confiáveis e próximos com nome aparecem na lista Bluetooth.";
 "settings.appleBluetoothRead" = "Ler a bateria do iPhone e iPad por Bluetooth";
 "settings.appleBluetoothRead.description" = "Conecta a um iPhone ou iPad por perto para ler a bateria. O aparelho pede o emparelhamento na primeira vez; se recusado, a leitura para.";
